@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dairyapp/Screens/homepage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:dairyapp/Animations/FadeAnimation.dart';
@@ -203,7 +204,11 @@ class RegisterState extends State<RegisterPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) {
-                    return radio();
+                    return HomePage(onSignedOut: () {
+                      setState(() {
+                        widget.onSignedIn();
+                      });
+                    });
                   },
                 ),
               );

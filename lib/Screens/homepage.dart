@@ -1,3 +1,4 @@
+import 'package:dairyapp/Screens/subscribeScreen.dart';
 import 'package:double_back_to_close_app/double_back_to_close_app.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -35,8 +36,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     _checkPinCode();
     screens = [
       CategoriesList(pinCode: userPinCode),
-      //ProfilePage(),
-      SubscribedPlan(),
+      ProfilePage(),
+      radio(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
     currentScreen = screens[0];
@@ -365,7 +366,7 @@ class CategoriesList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Categories",
+                      "Products and Categories",
                       style: TextStyle(
                         fontSize: 24.0,
                         fontWeight: FontWeight.bold,
