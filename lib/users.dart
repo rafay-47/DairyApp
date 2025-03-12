@@ -8,6 +8,7 @@ class users {
   String number;
   String address;
   String bill;
+  bool isAdmin;
 
   final String uid;
 
@@ -19,13 +20,29 @@ class users {
     required this.number,
     required this.address,
     required this.bill,
+    this.isAdmin = false,
   });
 
-  final CollectionReference ref = FirebaseFirestore.instance.collection('users');
-  final CollectionReference ref1 = FirebaseFirestore.instance.collection('product');
+  final CollectionReference ref = FirebaseFirestore.instance.collection(
+    'users',
+  );
+  final CollectionReference ref1 = FirebaseFirestore.instance.collection(
+    'product',
+  );
 
-  Future addUserData(String name, String surname, String email, String number,
-      String address, String bill, var arr, bool status, int cartValue, Map<dynamic, dynamic> map) async {
+  Future addUserData(
+    String name,
+    String surname,
+    String email,
+    String number,
+    String address,
+    String bill,
+    var arr,
+    bool status,
+    int cartValue,
+    bool isAdmin,
+    Map<dynamic, dynamic> map,
+  ) async {
     return await ref.doc(uid).set({
       'Name': name,
       'Surname': surname,
@@ -36,6 +53,7 @@ class users {
       'Array': arr,
       'Status': status,
       'CartValue': cartValue,
+      'isAdmin': isAdmin,
     });
   }
 

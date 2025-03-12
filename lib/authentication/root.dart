@@ -1,7 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:dairyapp/Screens/Settings.dart';
-import 'package:dairyapp/Screens/home.dart';
 import 'package:dairyapp/Screens/homepage.dart';
 import 'package:dairyapp/main.dart';
 import 'auth.dart';

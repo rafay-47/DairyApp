@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:dairyapp/Screens/SubscribedPage.dart';
 import 'package:dairyapp/Screens/profile.dart';
-import 'package:dairyapp/Screens/Settings.dart';
 import 'package:toast/toast.dart';
 import 'Settings.dart' as Settings;
 import 'cart.dart';
@@ -15,7 +14,8 @@ int sum = 0;
 class ProductDetails extends StatefulWidget {
   final assetPath, price, name, desc;
 
-  const ProductDetails({super.key, 
+  const ProductDetails({
+    super.key,
     this.assetPath,
     this.price,
     this.name,
@@ -38,9 +38,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     Home(),
     ProfilePage(),
     SubscribedPlan(),
-    Settings.Settings(onSignedOut:() {
-      
-    },),
+    Settings.Settings(onSignedOut: () {}),
   ]; // to store nested tabs
 
   final PageStorageBucket bucket = PageStorageBucket();
@@ -87,7 +85,7 @@ class _ProductDetailsState extends State<ProductDetails> {
         ),
         backgroundColor: Colors.white,
         title: Text(
-          'Daily Dairy',
+          'Dairy App',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.black.withOpacity(.6)),
         ),
@@ -221,7 +219,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                       textController.text = '5';
                       Toast.show(
                         'You can not order more than 5 at once!!',
-                        
+
                         webTexColor: Colors.white,
                         backgroundColor: Colors.black,
                       );
@@ -232,7 +230,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                       putdata();
                       Toast.show(
                         "Added to Cart",
-                        
+
                         duration: Toast.lengthShort,
                         gravity: Toast.center,
                         backgroundColor: Color.fromRGBO(22, 102, 225, .8),

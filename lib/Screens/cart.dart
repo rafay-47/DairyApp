@@ -19,7 +19,6 @@ class Cart extends StatefulWidget {
 }
 
 class _CartState extends State<Cart> {
-
   late Razorpay razor;
 
   Future<void> getAddOnData() async {
@@ -29,7 +28,8 @@ class _CartState extends State<Cart> {
         await FirebaseFirestore.instance.collection('cart').doc(uid).get();
     snapshotprice =
         await FirebaseFirestore.instance.collection('price').doc('1').get();
-    snapuser = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    snapuser =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
     setState(() {
       cartProduct = (snapshot.data() as Map<String, dynamic>)['product'];
       cartNameList = cartProduct.keys.toList();
@@ -50,34 +50,34 @@ class _CartState extends State<Cart> {
 
   Widget displayData() {
     return ListView.builder(
-        itemCount: cartProduct.length,
-        itemBuilder: (context, index) {
-          return Dismissible(
-            background: Container(
-              color: Color.fromRGBO(22, 102, 225, 1),
+      itemCount: cartProduct.length,
+      itemBuilder: (context, index) {
+        return Dismissible(
+          background: Container(color: Color.fromRGBO(22, 102, 225, 1)),
+          key: UniqueKey(),
+          child: Card(
+            elevation: 10.0,
+            child: ListTile(
+              title: Text('${cartNameList[index]}'),
+              trailing: Text('${cartQuantityList[index]}'),
             ),
-            key: UniqueKey(),
-            child: Card(
-              elevation: 10.0,
-              child: ListTile(
-                title: Text('${cartNameList[index]}'),
-                trailing: Text('${cartQuantityList[index]}'),
-              ),
-            ),
-            onDismissed: (direction) {
-              Toast.show(
-                  "${cartNameList[index]} removed form cart ",
-                  duration: Toast.lengthShort,
-                  gravity: Toast.bottom,
-                  backgroundColor: Colors.black,
-                  webTexColor: Colors.white);
-              setState(() {
-                updatecartvalue(index);
-                updateCart(index);
-              });
-            },
-          );
-        });
+          ),
+          onDismissed: (direction) {
+            Toast.show(
+              "${cartNameList[index]} removed form cart ",
+              duration: Toast.lengthShort,
+              gravity: Toast.bottom,
+              backgroundColor: Colors.black,
+              webTexColor: Colors.white,
+            );
+            setState(() {
+              updatecartvalue(index);
+              updateCart(index);
+            });
+          },
+        );
+      },
+    );
   }
 
   Future<void> updateCart(var index) async {
@@ -87,59 +87,52 @@ class _CartState extends State<Cart> {
       cartProduct.remove('${cartNameList[index]}');
       cartNameList.removeAt(index);
       cartQuantityList.removeAt(index);
-      FirebaseFirestore.instance
-          .collection('cart')
-          .doc(uid)
-          .update({'product': cartProduct});
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'product': cartProduct});
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'CartValue': sum});
+      FirebaseFirestore.instance.collection('cart').doc(uid).update({
+        'product': cartProduct,
+      });
+      FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'product': cartProduct,
+      });
+      FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'CartValue': sum,
+      });
     });
   }
 
-  void openCheckout()
-  {
-    var options={
-      'key':'rzp_test_0sjqCKCoIjJr2F',
-      'amount':sum*100,
-      'name':'Daily Dairy',
-      'external':{
-        'wallets':['paytm']
-      }
+  void openCheckout() {
+    var options = {
+      'key': 'rzp_test_0sjqCKCoIjJr2F',
+      'amount': sum * 100,
+      'name': 'Dairy App',
+      'external': {
+        'wallets': ['paytm'],
+      },
     };
 
-    try{
+    try {
       razor.open(options);
-    }
-    catch(e){
+    } catch (e) {
       debugPrint(e as String?);
     }
   }
 
-  void handlerPaymentSuccess(PaymentSuccessResponse response)
-  {
+  void handlerPaymentSuccess(PaymentSuccessResponse response) {
     Toast.show('Success${response.paymentId}');
   }
 
-  void handlerPaymentError(PaymentFailureResponse response)
-  {
+  void handlerPaymentError(PaymentFailureResponse response) {
     Toast.show('Error${response.code} . ${response.message}');
   }
 
-  void handlerPaymentExternal(ExternalWalletResponse response)
-  {
+  void handlerPaymentExternal(ExternalWalletResponse response) {
     Toast.show('External Wallet${response.walletName}');
   }
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    razor=Razorpay();
+    razor = Razorpay();
     razor.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlerPaymentSuccess);
     razor.on(Razorpay.EVENT_PAYMENT_ERROR, handlerPaymentError);
     razor.on(Razorpay.EVENT_EXTERNAL_WALLET, handlerPaymentExternal);
@@ -152,16 +145,15 @@ class _CartState extends State<Cart> {
     super.dispose();
     razor.clear();
   }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(
-            'images/cart.png'
-          ),
-          fit: BoxFit.fill
-        )
+          image: AssetImage('images/cart.png'),
+          fit: BoxFit.fill,
+        ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -172,9 +164,10 @@ class _CartState extends State<Cart> {
           title: Text(
             '🛒 Cart 🛒',
             style: TextStyle(
-                fontSize: 30.0,
-                color: Color.fromRGBO(22, 102, 225, 1),
-                fontWeight: FontWeight.bold),
+              fontSize: 30.0,
+              color: Color.fromRGBO(22, 102, 225, 1),
+              fontWeight: FontWeight.bold,
+            ),
           ),
           centerTitle: true,
         ),
@@ -186,12 +179,14 @@ class _CartState extends State<Cart> {
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
             ),
-            SizedBox(
-              height: 10.0,
-            ),
+            SizedBox(height: 10.0),
             Container(
               padding: EdgeInsets.only(
-                  left: 30.0, right: 30.0, bottom: 20.0, top: 10.0),
+                left: 30.0,
+                right: 30.0,
+                bottom: 20.0,
+                top: 10.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[Text('Product'), Text('Quantity')],
@@ -203,9 +198,7 @@ class _CartState extends State<Cart> {
               height: 350.0,
               child: displayData(),
             ),
-            SizedBox(
-              height: 10.0,
-            ),
+            SizedBox(height: 10.0),
             Container(
               padding: EdgeInsets.all(20.0),
               child: Row(
@@ -214,24 +207,19 @@ class _CartState extends State<Cart> {
               ),
             ),
             SizedBox(
-              width: MediaQuery.of(context).size.width-200.0,
+              width: MediaQuery.of(context).size.width - 200.0,
               child: MaterialButton(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(22.0),
                 ),
                 color: Color.fromRGBO(22, 102, 225, 1),
                 elevation: 10.0,
-                child: Text(
-                  'Buy Now',
-                  style: TextStyle(
-                      color: Colors.white
-                  ),
-                ),
-                onPressed: (){
+                child: Text('Buy Now', style: TextStyle(color: Colors.white)),
+                onPressed: () {
                   openCheckout();
                 },
               ),
-            )
+            ),
           ],
         ),
       ),

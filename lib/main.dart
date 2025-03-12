@@ -1,13 +1,12 @@
-import 'dart:math';
-
+import 'package:dairyapp/Screens/adminHomepage.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:dairyapp/Screens/homepage.dart';
 import 'package:dairyapp/authentication/auth.dart';
 import 'package:dairyapp/authentication/auth_provider.dart';
 import 'package:dairyapp/authentication/root.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'Animations/FadeAnimation.dart';
 import 'Screens/register.dart';
 import 'firebase_options.dart';
@@ -22,7 +21,7 @@ void main() async {
       auth: Auth(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Daily Dairy',
+        title: 'Dairy App',
         home: rootpage(),
         theme: ThemeData(
           fontFamily: 'Varela',
@@ -245,22 +244,50 @@ class LoginState extends State<LoginPage> {
     final formState = _formkey.currentState;
     if (formState != null && formState.validate()) {
       try {
-        await firebase_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+        // Authenticate the user
+        final userCredential = await firebase_auth.FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+
+        // Call onSignedIn callback
         widget.onSignedIn();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) => HomePage(
-                  onSignedOut: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-          ),
-        );
+
+        // Check if user is admin
+        final userId = userCredential.user!.uid;
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .get();
+
+        if (userDoc.exists &&
+            userDoc.data() != null &&
+            userDoc.data()!['isAdmin'] == true) {
+          // Navigate to admin dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => AdminHomePage(
+                    onSignedOut: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+            ),
+          );
+        } else {
+          // Navigate to regular user homepage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => HomePage(
+                    onSignedOut: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+            ),
+          );
+        }
       } on firebase_auth.FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

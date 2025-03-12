@@ -24,6 +24,7 @@ class RegisterState extends State<RegisterPage> {
   final GlobalKey<FormState> fkey = GlobalKey<FormState>();
   late String email, password, name, surname, number, cpassword;
   late bool passwordShow;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -62,6 +63,8 @@ class RegisterState extends State<RegisterPage> {
                 _buildPasswordField(),
                 SizedBox(height: Constants.textFieldSpacing),
                 _buildConfirmPasswordField(),
+                SizedBox(height: Constants.textFieldSpacing),
+                _buildAdminToggle(),
                 SizedBox(height: Constants.formSpacing),
                 _buildRegisterButton(),
                 SizedBox(height: Constants.textFieldSpacing),
@@ -69,6 +72,33 @@ class RegisterState extends State<RegisterPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminToggle() {
+    return FadeAnimation(
+      1.0,
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: Row(
+          children: [
+            Text(
+              "Admin Account",
+              style: TextStyle(color: Constants.accentColor),
+            ),
+            Spacer(),
+            Switch(
+              value: _isAdmin,
+              activeColor: Constants.secondaryColor,
+              onChanged: (value) {
+                setState(() {
+                  _isAdmin = value;
+                });
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -289,7 +319,20 @@ class RegisterState extends State<RegisterPage> {
           number: '',
           address: '',
           bill: '',
-        ).addUserData(name, surname, email, number, " ", " ", " ", true, 0, {});
+          isAdmin: false,
+        ).addUserData(
+          name,
+          surname,
+          email,
+          number,
+          " ",
+          " ",
+          " ",
+          true,
+          0,
+          _isAdmin,
+          {},
+        ); // Pass _isAdmin here
 
         FirebaseFirestore.instance.collection('cart').doc(user.user!.uid).set({
           'product': map,
