@@ -7,7 +7,6 @@ import 'package:dairyapp/main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth.dart';
 import 'auth_provider.dart' as custom_auth_provider;
-import 'package:firebase_auth/firebase_auth.dart';
 
 class rootpage extends StatefulWidget {
   const rootpage({super.key});

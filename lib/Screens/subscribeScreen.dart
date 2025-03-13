@@ -19,8 +19,8 @@ class radioState extends State<radio> {
   int amul_gold = 0;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body:  Column(
+    return Scrollbar(child: 
+       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
@@ -120,18 +120,6 @@ class radioState extends State<radio> {
             ),
           ))
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add your onPressed code here!
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return HomePage(onSignedOut: () {
-              
-            },);
-          }));
-        },
-        backgroundColor: Colors.blue[400],
-        child: Text("Skip"),
       ),
     );
   }

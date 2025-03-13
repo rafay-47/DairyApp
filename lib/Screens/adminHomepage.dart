@@ -1,6 +1,7 @@
 import 'package:dairyapp/Screens/CategoriesManagement.dart';
 import 'package:dairyapp/Screens/UserManagementPage.dart';
 import 'package:dairyapp/Screens/productManagement.dart';
+import 'package:dairyapp/constants.dart';
 import 'package:dairyapp/main.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,20 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-// App theme colors
-class AppColors {
-  static const Color primaryColor = Color(0xFFFAFAFA);
-  static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1);
-  static const Color backgroundColor = Color(0xFFFAFAFA);
-  static const Color accentColor = Color.fromRGBO(22, 102, 225, 1);
-  static const Color textDark = Color(0xFF333333);
-  static const Color textLight = Color(0xFF888888);
-  static const Color cardColor = Colors.white;
-  static const Color successColor = Color(0xFF4CAF50);
-  static const Color warningColor = Color(0xFFFFC107);
-  static const Color errorColor = Color(0xFFF44336);
-}
+import 'package:dairyapp/Screens/AdminOrders.dart';
 
 class AdminHomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -192,7 +180,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading dashboard data: $e'),
-          backgroundColor: AppColors.errorColor,
+          backgroundColor: Constants.errorColor,
         ),
       );
     } finally {
@@ -206,39 +194,39 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Constants.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cardColor,
+        backgroundColor: Constants.cardColor,
         elevation: 0,
         title: const Text(
           'Admin Dashboard',
           style: TextStyle(
-            color: AppColors.textDark,
+            color: Constants.textDark,
             fontWeight: FontWeight.bold,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.textDark),
+          icon: const Icon(Icons.menu, color: Constants.textDark),
           onPressed: () {
             _scaffoldKey.currentState?.openDrawer();
           },
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.textDark),
+            icon: const Icon(Icons.refresh, color: Constants.textDark),
             onPressed: _fetchDashboardData,
           ),
           IconButton(
             icon: const Icon(
               Icons.notifications_outlined,
-              color: AppColors.textDark,
+              color: Constants.textDark,
             ),
             onPressed: () {},
           ),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 10),
             child: const CircleAvatar(
-              backgroundColor: AppColors.accentColor,
+              backgroundColor: Constants.accentColor,
               child: Text('AD', style: TextStyle(color: Colors.white)),
             ),
           ),
@@ -246,12 +234,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
       ),
       drawer: Drawer(
         child: Container(
-          color: AppColors.cardColor,
+          color: Constants.cardColor,
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
-                decoration: const BoxDecoration(color: AppColors.accentColor),
+                decoration: const BoxDecoration(color: Constants.accentColor),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
@@ -261,7 +249,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       child: Text(
                         'AD',
                         style: TextStyle(
-                          color: AppColors.accentColor,
+                          color: Constants.accentColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -300,7 +288,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       body:
           _isLoading
               ? const Center(
-                child: CircularProgressIndicator(color: AppColors.accentColor),
+                child: CircularProgressIndicator(color: Constants.accentColor),
               )
               : _selectedIndex == 0
               ? _buildDashboard()
@@ -314,22 +302,22 @@ class _AdminHomePageState extends State<AdminHomePage> {
         icon,
         color:
             _selectedIndex == index
-                ? AppColors.accentColor
-                : AppColors.textLight,
+                ? Constants.accentColor
+                : Constants.textLight,
       ),
       title: Text(
         title,
         style: TextStyle(
           color:
               _selectedIndex == index
-                  ? AppColors.accentColor
-                  : AppColors.textDark,
+                  ? Constants.accentColor
+                  : Constants.textDark,
           fontWeight:
               _selectedIndex == index ? FontWeight.bold : FontWeight.normal,
         ),
       ),
       selected: _selectedIndex == index,
-      selectedTileColor: AppColors.accentColor.withOpacity(0.1),
+      selectedTileColor: Constants.accentColor.withOpacity(0.1),
       onTap: () {
         setState(() {
           _selectedIndex = index;
@@ -357,6 +345,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
               context,
               MaterialPageRoute(builder: (context) => UserManagement()),
             );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AdminOrders()),
+            );
           }
         });
       },
@@ -368,20 +361,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.engineering, size: 80, color: AppColors.accentColor),
+          Icon(Icons.engineering, size: 80, color: Constants.accentColor),
           SizedBox(height: 16),
           Text(
             'Coming Soon',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: Constants.textDark,
             ),
           ),
           SizedBox(height: 8),
           Text(
             'This feature is under development',
-            style: TextStyle(fontSize: 16, color: AppColors.textLight),
+            style: TextStyle(fontSize: 16, color: Constants.textLight),
           ),
         ],
       ),
@@ -391,7 +384,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Widget _buildDashboard() {
     return RefreshIndicator(
       onRefresh: _fetchDashboardData,
-      color: AppColors.accentColor,
+      color: Constants.accentColor,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -433,7 +426,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: AppColors.accentColor,
+      color: Constants.accentColor,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -470,7 +463,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: AppColors.accentColor,
+                      foregroundColor: Constants.accentColor,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -524,7 +517,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 'Total Orders',
                 _dashboardStats['totalOrders']?.toString() ?? '0',
                 Icons.shopping_bag,
-                AppColors.accentColor,
+                Constants.accentColor,
                 _dashboardStats['orderGrowth'] ?? 0.0,
               ),
             ),
@@ -534,7 +527,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 'Total Revenue',
                 formatter.format(_dashboardStats['totalRevenue'] ?? 0),
                 Icons.currency_rupee,
-                AppColors.successColor,
+                Constants.successColor,
                 _dashboardStats['revenueGrowth'] ?? 0.0,
               ),
             ),
@@ -548,7 +541,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 'Active Users',
                 _dashboardStats['activeUsers']?.toString() ?? '0',
                 Icons.people,
-                AppColors.warningColor,
+                Constants.warningColor,
                 _dashboardStats['userGrowth'] ?? 0.0,
               ),
             ),
@@ -558,7 +551,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 'Subscriptions',
                 _dashboardStats['subscriptions']?.toString() ?? '0',
                 Icons.repeat,
-                AppColors.errorColor,
+                Constants.errorColor,
                 _dashboardStats['subscriptionGrowth'] ?? 0.0,
               ),
             ),
@@ -589,7 +582,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: AppColors.textLight,
+                    color: Constants.textLight,
                     fontSize: 14,
                   ),
                 ),
@@ -602,7 +595,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: Constants.textDark,
               ),
             ),
             const SizedBox(height: 8),
@@ -612,8 +605,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   growth >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
                   color:
                       growth >= 0
-                          ? AppColors.successColor
-                          : AppColors.errorColor,
+                          ? Constants.successColor
+                          : Constants.errorColor,
                   size: 16,
                 ),
                 const SizedBox(width: 4),
@@ -623,8 +616,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     fontSize: 12,
                     color:
                         growth >= 0
-                            ? AppColors.successColor
-                            : AppColors.errorColor,
+                            ? Constants.successColor
+                            : Constants.errorColor,
                   ),
                 ),
               ],
@@ -652,7 +645,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: Constants.textDark,
                   ),
                 ),
                 DropdownButton<String>(
@@ -695,7 +688,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         reservedSize: 30,
                         getTitlesWidget: (value, meta) {
                           const style = TextStyle(
-                            color: AppColors.textLight,
+                            color: Constants.textLight,
                             fontSize: 12,
                           );
                           String text;
@@ -731,7 +724,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         reservedSize: 40,
                         getTitlesWidget: (value, meta) {
                           const style = TextStyle(
-                            color: AppColors.textLight,
+                            color: Constants.textLight,
                             fontSize: 12,
                           );
                           String text;
@@ -764,13 +757,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     LineChartBarData(
                       spots: _revenueData,
                       isCurved: true,
-                      color: AppColors.accentColor,
+                      color: Constants.accentColor,
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: AppColors.accentColor.withOpacity(0.1),
+                        color: Constants.accentColor.withOpacity(0.1),
                       ),
                     ),
                   ],
@@ -781,7 +774,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildLegendItem('This Year', AppColors.accentColor),
+                _buildLegendItem('This Year', Constants.accentColor),
                 const SizedBox(width: 20),
                 _buildLegendItem('Last Year', Colors.grey),
               ],
@@ -803,7 +796,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         const SizedBox(width: 8),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textLight, fontSize: 12),
+          style: const TextStyle(color: Constants.textLight, fontSize: 12),
         ),
       ],
     );
@@ -832,7 +825,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: Constants.textDark,
                   ),
                 ),
                 TextButton(
@@ -906,11 +899,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
   ) {
     Color statusColor;
     if (status == 'Delivered') {
-      statusColor = AppColors.successColor;
+      statusColor = Constants.successColor;
     } else if (status == 'Processing') {
-      statusColor = AppColors.warningColor;
+      statusColor = Constants.warningColor;
     } else {
-      statusColor = AppColors.textLight;
+      statusColor = Constants.textLight;
     }
 
     return DataRow(
@@ -947,7 +940,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
     // Create a list of colors for the pie sections
     final List<Color> colors = [
-      AppColors.accentColor,
+      Constants.accentColor,
       Colors.orangeAccent,
       Colors.pinkAccent,
       Colors.greenAccent,
@@ -988,7 +981,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           color: Colors.grey.shade300,
           radius: 70,
           titleStyle: const TextStyle(
-            color: AppColors.textDark,
+            color: Constants.textDark,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -1017,7 +1010,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: Constants.textDark,
               ),
             ),
             const SizedBox(height: 20),
@@ -1062,14 +1055,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
           Expanded(
             child: Text(
               product,
-              style: const TextStyle(color: AppColors.textDark),
+              style: const TextStyle(color: Constants.textDark),
             ),
           ),
           Text(
             percentage,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: Constants.textDark,
             ),
           ),
         ],
@@ -1095,7 +1088,7 @@ Widget _buildSubscriptionSummary() {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                  color: Constants.textDark,
                 ),
               ),
               TextButton(onPressed: () {}, child: const Text('View Details')),
@@ -1109,7 +1102,7 @@ Widget _buildSubscriptionSummary() {
                   'Weekly',
                   '312',
                   Icons.calendar_view_week,
-                  AppColors.accentColor,
+                  Constants.accentColor,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1176,7 +1169,7 @@ Widget _buildSubscriptionCard(
         Text(
           title,
           style: const TextStyle(
-            color: AppColors.textDark,
+            color: Constants.textDark,
             fontWeight: FontWeight.w500,
           ),
         ),

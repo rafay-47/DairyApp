@@ -6,6 +6,12 @@ class Constants {
   static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1); // Blue
   static const Color backgroundColor = Color(0xFFFAFAFA); // Off-White
   static const Color accentColor = Color.fromRGBO(22, 102, 225, 1); // Blue
+  static const Color textDark = Color(0xFF333333);
+  static const Color textLight = Color(0xFF888888);
+  static const Color cardColor = Colors.white;
+  static const Color successColor = Color(0xFF4CAF50);
+  static const Color warningColor = Color(0xFFFFC107);
+  static const Color errorColor = Color(0xFFF44336);
   static const String loginImage = "images/Login.png";
   static const double horizontalPadding = 22.0;
   static const double verticalPadding = 150.0;

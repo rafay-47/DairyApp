@@ -39,8 +39,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     screens = [
       CategoriesList(pinCode: userPinCode),
       ProfilePage(),
-      //UserOrders(),
-      OrderHistoryPage(),
+      UserOrders(),
+      //OrderHistoryPage(),
       radio(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
@@ -274,7 +274,7 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
         ),
         _buildTabBarItem(
           icon: Icons.shopping_bag,
-          label: 'User_Orders',
+          label: 'Orders',
           index: 2,
           screen: screens[2],
         ),
@@ -289,14 +289,14 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
         _buildTabBarItem(
           icon: Icons.assignment,
           label: 'Plans',
-          index: 2,
-          screen: screens[2],
+          index: 3,
+          screen: screens[3],
         ),
         _buildTabBarItem(
           icon: Icons.settings,
           label: 'Settings',
-          index: 3,
-          screen: screens[3],
+          index: 4,
+          screen: screens[4],
         ),
         SizedBox(width: 30.0),
       ],
@@ -332,338 +332,6 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Displays categories in a grid layout.
-class CategoriesList extends StatelessWidget {
-  final String? pinCode;
-
-  const CategoriesList({Key? key, this.pinCode}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    if (pinCode == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_off, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Location not set',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Please set your PIN code to view available products',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    Query categoriesQuery = FirebaseFirestore.instance.collection('categories');
-    print(categoriesQuery.snapshots().first);
-    // Add location filtering if needed
-    // if (pinCode != null) {
-    //   categoriesQuery = categoriesQuery.where('pinCode', arrayContains: pinCode);
-    // }
-
-    return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return <Widget>[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Products and Categories",
-                      style: TextStyle(
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Products available for delivery to PIN: $pinCode",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                    SizedBox(height: 8),
-                    _buildFeaturedProducts(),
-                  ],
-                ),
-              ),
-            ),
-          ];
-        },
-        body: StreamBuilder<QuerySnapshot>(
-          stream: categoriesQuery.snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error loading categories'));
-            }
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-            final categories = snapshot.data!.docs;
-            if (categories.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.category_outlined,
-                      size: 80,
-                      color: Colors.grey[400],
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'No categories available in your area',
-                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Show PIN code dialog
-                        final HomeState? homeState =
-                            context.findAncestorStateOfType<HomeState>();
-                        if (homeState != null) {
-                          homeState._showPinCodeDialog();
-                        }
-                      },
-                      child: Text('Change Location'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Constants.accentColor,
-                        foregroundColor: Constants.primaryColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: GridView.builder(
-                itemCount: categories.length,
-                padding: EdgeInsets.only(top: 16, bottom: 70),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.8,
-                ),
-                itemBuilder: (context, index) {
-                  final categoryData =
-                      categories[index].data() as Map<String, dynamic>;
-                  final categoryName =
-                      categoryData['name'] ?? 'Unnamed Category';
-                  final categoryDescription = categoryData['description'] ?? '';
-                  final imageUrl = categoryData['imageUrl'] ?? '';
-
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => ProductsByCategoryPage(
-                                  category: categoryName,
-                                  pinCode: pinCode,
-                                ),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child:
-                                imageUrl.isNotEmpty
-                                    ? Image.network(imageUrl, fit: BoxFit.cover)
-                                    : Container(
-                                      color: Colors.grey[200],
-                                      child: Icon(
-                                        Icons.category,
-                                        size: 40,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    categoryName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  SizedBox(height: 4),
-                                  if (categoryDescription.isNotEmpty)
-                                    Text(
-                                      categoryDescription,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeaturedProducts() {
-    return Container(
-      height: 180,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('products').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              snapshot.data!.docs.isEmpty) {
-            return Container(); // No featured products
-          }
-
-          final products = snapshot.data!.docs;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  "Featured Products",
-                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final productData =
-                        products[index].data() as Map<String, dynamic>;
-                    final productName =
-                        productData['name'] ?? 'Unnamed Product';
-                    final productPrice =
-                        productData['price'] != null
-                            ? productData['price'].toString()
-                            : 'N/A';
-                    final imageUrl = productData['imageUrl'] ?? '';
-
-                    return Container(
-                      width: 140,
-                      margin: EdgeInsets.only(right: 12),
-                      child: Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            // Navigate to product detail
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child:
-                                    imageUrl.isNotEmpty
-                                        ? Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                        )
-                                        : Container(
-                                          color: Colors.grey[200],
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.image,
-                                              color: Colors.grey[400],
-                                            ),
-                                          ),
-                                        ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      productName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      '₹$productPrice',
-                                      style: TextStyle(
-                                        color: Constants.accentColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -1501,20 +1169,28 @@ class _CartState extends State<Cart> {
     );
   }
 
-  void _clearCart() {
-    FirebaseFirestore.instance
-        .collection('cart')
-        .get()
-        .then((snapshot) {
-          for (DocumentSnapshot doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        })
-        .catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to clear cart: $error')),
-          );
-        });
+  Future<void> _clearCart() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('cart').get();
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to clear cart: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      throw error; // Rethrow the error to be caught by the calling function
+    }
   }
 
   void _proceedToCheckout() async {
@@ -1523,6 +1199,7 @@ class _CartState extends State<Cart> {
     });
 
     try {
+      // Get current user
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw 'Please login to place order';
@@ -1535,22 +1212,30 @@ class _CartState extends State<Cart> {
               .doc(currentUser.uid)
               .get();
 
+      if (!userDoc.exists) {
+        throw 'User profile not found';
+      }
+
       final userData = userDoc.data() ?? {};
       final userEmail = currentUser.email ?? '';
       final userName = userData['name'] ?? '';
       final userPhone = userData['phone'] ?? '';
 
-      // Get cart items and pincode
+      // Get cart items
       QuerySnapshot cartSnapshot =
           await FirebaseFirestore.instance.collection('cart').get();
       if (cartSnapshot.docs.isEmpty) {
         throw 'Cart is empty';
       }
 
+      // Get user's pincode
       final prefs = await SharedPreferences.getInstance();
       final pinCode = prefs.getString('user_pin_code');
+      if (pinCode == null) {
+        throw 'Please set your delivery location';
+      }
 
-      // Prepare items and calculate total
+      // Prepare items array and calculate total
       List<Map<String, dynamic>> items = [];
       double totalAmount = 0;
 
@@ -1564,6 +1249,7 @@ class _CartState extends State<Cart> {
         totalAmount += price * quantity;
 
         items.add({
+          'productId': doc.id,
           'category': data['category'] ?? '',
           'description': data['description'] ?? '',
           'imageURL': data['imageUrl'] ?? null,
@@ -1574,29 +1260,110 @@ class _CartState extends State<Cart> {
         });
       }
 
+      // Calculate delivery charge
       final deliveryCharge = totalAmount >= 500 ? 0 : 40;
-      totalAmount += deliveryCharge;
+      final finalAmount = totalAmount + deliveryCharge;
 
-      // Create order with comprehensive user details
+      // Generate order number
+      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+
+      // Create order document in Firestore
       await FirebaseFirestore.instance.collection('orders').add({
+        // User Information
         'userId': currentUser.uid,
         'userEmail': userEmail,
         'userName': userName,
         'userPhone': userPhone,
         'userPinCode': pinCode,
-        'items': items,
+
+        // Order Information
+        'orderNumber': orderNumber,
         'timestamp': FieldValue.serverTimestamp(),
         'orderDate': DateTime.now(),
-        'total': totalAmount,
-        'deliveryCharge': deliveryCharge,
         'status': 'Processing',
         'isActive': true,
-        'orderNumber': 'ORD${DateTime.now().millisecondsSinceEpoch}',
+
+        // Items and Amount
+        'items': items,
+        'subtotal': totalAmount,
+        'deliveryCharge': deliveryCharge,
+        'total': finalAmount,
+
+        // Additional Information
+        'paymentMethod': 'Cash on Delivery',
+        'deliveryAddress': userData['address'] ?? '',
+        'notes': '',
       });
 
-      // Rest of the code (clear cart and show dialog)...
+      // Clear cart after successful order
+      await _clearCart();
+
+      // Show success dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Order Placed Successfully'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 60),
+                    SizedBox(height: 16),
+                    Text(
+                      'Your order #$orderNumber has been placed successfully!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Constants.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'You can track your order in the Orders section.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      Navigator.of(context).pop(); // Return to previous screen
+                    },
+                    child: Text(
+                      'OK',
+                      style: TextStyle(color: Constants.accentColor),
+                    ),
+                  ),
+                ],
+              ),
+        );
+      }
     } catch (error) {
-      // Error handling...
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to place order: $error'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 }
@@ -1799,5 +1566,337 @@ class OrderHistoryPage extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+// Displays categories in a grid layout.
+class CategoriesList extends StatelessWidget {
+  final String? pinCode;
+
+  const CategoriesList({Key? key, this.pinCode}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (pinCode == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'Location not set',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Please set your PIN code to view available products',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    Query categoriesQuery = FirebaseFirestore.instance.collection('categories');
+    print(categoriesQuery.snapshots().first);
+    // Add location filtering if needed
+    // if (pinCode != null) {
+    //   categoriesQuery = categoriesQuery.where('pinCode', arrayContains: pinCode);
+    // }
+
+    return Scaffold(
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return <Widget>[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Products and Categories",
+                      style: TextStyle(
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "Products available for delivery to PIN: $pinCode",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    SizedBox(height: 8),
+                    _buildFeaturedProducts(),
+                  ],
+                ),
+              ),
+            ),
+          ];
+        },
+        body: StreamBuilder<QuerySnapshot>(
+          stream: categoriesQuery.snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error loading categories'));
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+            final categories = snapshot.data!.docs;
+            if (categories.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.category_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No categories available in your area',
+                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Show PIN code dialog
+                        final HomeState? homeState =
+                            context.findAncestorStateOfType<HomeState>();
+                        if (homeState != null) {
+                          homeState._showPinCodeDialog();
+                        }
+                      },
+                      child: Text('Change Location'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Constants.accentColor,
+                        foregroundColor: Constants.primaryColor,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: GridView.builder(
+                itemCount: categories.length,
+                padding: EdgeInsets.only(top: 16, bottom: 70),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.8,
+                ),
+                itemBuilder: (context, index) {
+                  final categoryData =
+                      categories[index].data() as Map<String, dynamic>;
+                  final categoryName =
+                      categoryData['name'] ?? 'Unnamed Category';
+                  final categoryDescription = categoryData['description'] ?? '';
+                  final imageUrl = categoryData['imageUrl'] ?? '';
+
+                  return Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) => ProductsByCategoryPage(
+                                  category: categoryName,
+                                  pinCode: pinCode,
+                                ),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child:
+                                imageUrl.isNotEmpty
+                                    ? Image.network(imageUrl, fit: BoxFit.cover)
+                                    : Container(
+                                      color: Colors.grey[200],
+                                      child: Icon(
+                                        Icons.category,
+                                        size: 40,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    categoryName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  if (categoryDescription.isNotEmpty)
+                                    Text(
+                                      categoryDescription,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedProducts() {
+    return Container(
+      height: 180,
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('products').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              snapshot.data!.docs.isEmpty) {
+            return Container(); // No featured products
+          }
+
+          final products = snapshot.data!.docs;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  "Featured Products",
+                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final productData =
+                        products[index].data() as Map<String, dynamic>;
+                    final productName =
+                        productData['name'] ?? 'Unnamed Product';
+                    final productPrice =
+                        productData['price'] != null
+                            ? productData['price'].toString()
+                            : 'N/A';
+                    final imageUrl = productData['imageUrl'] ?? '';
+
+                    return Container(
+                      width: 140,
+                      margin: EdgeInsets.only(right: 12),
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            // Navigate to product detail
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child:
+                                    imageUrl.isNotEmpty
+                                        ? Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                        )
+                                        : Container(
+                                          color: Colors.grey[200],
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.image,
+                                              color: Colors.grey[400],
+                                            ),
+                                          ),
+                                        ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      productName,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '₹$productPrice',
+                                      style: TextStyle(
+                                        color: Constants.accentColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
