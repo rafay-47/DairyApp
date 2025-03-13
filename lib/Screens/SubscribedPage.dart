@@ -1,390 +1,1158 @@
+// import 'package:flutter/material.dart';
+// import 'package:intl/intl.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:dairyapp/Animations/FadeAnimation.dart';
-import 'package:dairyapp/Screens/subscribeScreen.dart';
-import 'package:toast/toast.dart';
+// class SubscriptionPage extends StatefulWidget {
+//   const SubscriptionPage({Key? key}) : super(key: key);
 
-late Map<dynamic, dynamic> product;
-late String plan;
-late List<dynamic> namelist;
-late List<dynamic> qlist;
-late String bill;
-late bool statusFirebase;
-late bool status;
-String stat = 'Pause Plan';
+//   @override
+//   _SubscriptionPageState createState() => _SubscriptionPageState();
+// }
 
-enum ConfirmAction { CANCEL, ACCEPT }
+// class _SubscriptionPageState extends State<SubscriptionPage> {
+//   String? selectedPlan;
+  
+//   // Define color palette
+//   static const Color primaryColor = Color(0xFFFAFAFA);
+//   static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1);
+//   static const Color backgroundColor = Color(0xFFFAFAFA);
+//   static const Color accentColor = Color.fromRGBO(22, 102, 225, 1);
 
-class SubscribedPlan extends StatefulWidget {
-  const SubscribedPlan({super.key});
+//   // Sample data for subscription plans
+//   final List<Map<String, dynamic>> subscriptionPlans = [
+//     {
+//       'title': 'Weekly Plan',
+//       'description': 'Fresh dairy products delivered weekly',
+//       'price': 149.99,
+//       'duration': 'week',
+//       'benefits': ['Free delivery', '10% off on all products', 'Priority customer support'],
+//       'image': 'images/weekly.png',
+//       'value': 'weekly'
+//     },
+//     {
+//       'title': 'Monthly Plan',
+//       'description': 'Save more with monthly deliveries',
+//       'price': 549.99,
+//       'duration': 'month',
+//       'benefits': ['Free delivery', '15% off on all products', 'Priority customer support', 'Exclusive monthly offers'],
+//       'image': 'images/monthly.png',
+//       'value': 'monthly'
+//     },
+//     {
+//       'title': 'Yearly Plan',
+//       'description': 'Best value for loyal customers',
+//       'price': 5999.99,
+//       'duration': 'year',
+//       'benefits': ['Free delivery', '20% off on all products', 'Premium customer support', 'Exclusive yearly offers', 'Surprise gifts'],
+//       'image': 'images/yearly.png',
+//       'value': 'yearly'
+//     },
+//   ];
 
-  @override
-  _State createState() => _State();
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: backgroundColor,
+//       appBar: AppBar(
+//         backgroundColor: primaryColor,
+//         elevation: 0,
+//         title: const Text(
+//           'Subscription Plans',
+//           style: TextStyle(
+//             color: secondaryColor,
+//             fontWeight: FontWeight.bold,
+//           ),
+//         ),
+//         iconTheme: const IconThemeData(color: secondaryColor),
+//       ),
+//       body: SafeArea(
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Padding(
+//               padding: const EdgeInsets.all(16.0),
+//               child: Row(
+//                 children: [
+//                   Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(
+//                       color: secondaryColor.withOpacity(0.1),
+//                       borderRadius: BorderRadius.circular(8),
+//                     ),
+//                     child: const Icon(
+//                       Icons.calendar_month,
+//                       color: secondaryColor,
+//                     ),
+//                   ),
+//                   const SizedBox(width: 12),
+//                   Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       const Text(
+//                         'Subscribe & Save',
+//                         style: TextStyle(
+//                           fontSize: 18,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.black87,
+//                         ),
+//                       ),
+//                       Text(
+//                         'Choose a plan that works for you',
+//                         style: TextStyle(
+//                           fontSize: 14,
+//                           color: Colors.black54,
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             Expanded(
+//               child: ListView.builder(
+//                 padding: const EdgeInsets.all(16),
+//                 itemCount: subscriptionPlans.length,
+//                 itemBuilder: (context, index) {
+//                   final plan = subscriptionPlans[index];
+//                   return SubscriptionCard(
+//                     title: plan['title'],
+//                     description: plan['description'],
+//                     price: plan['price'],
+//                     duration: plan['duration'],
+//                     benefits: List<String>.from(plan['benefits']),
+//                     image: plan['image'],
+//                     isSelected: selectedPlan == plan['value'],
+//                     onTap: () {
+//                       setState(() {
+//                         selectedPlan = plan['value'];
+//                       });
+//                       _showSubscriptionDetails(context, plan);
+//                     },
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//       bottomNavigationBar: selectedPlan != null
+//           ? Container(
+//               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+//               decoration: BoxDecoration(
+//                 color: Colors.white,
+//                 boxShadow: [
+//                   BoxShadow(
+//                     color: Colors.black12,
+//                     blurRadius: 4,
+//                     offset: Offset(0, -2),
+//                   ),
+//                 ],
+//               ),
+//               child: ElevatedButton(
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: secondaryColor,
+//                   padding: const EdgeInsets.symmetric(vertical: 16),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(12),
+//                   ),
+//                 ),
+//                 onPressed: () {
+//                   _confirmSubscription(context);
+//                 },
+//                 child: const Text(
+//                   'Subscribe Now',
+//                   style: TextStyle(
+//                     fontSize: 16,
+//                     fontWeight: FontWeight.bold,
+//                   ),
+//                 ),
+//               ),
+//             )
+//           : null,
+//     );
+//   }
 
-class _State extends State<SubscribedPlan> {
-  final db = FirebaseFirestore.instance;
-  DateFormat dateformat = DateFormat.Hm();
+//   void _showSubscriptionDetails(BuildContext context, Map<String, dynamic> plan) {
+//     showModalBottomSheet(
+//       context: context,
+//       backgroundColor: Colors.transparent,
+//       isScrollControlled: true,
+//       builder: (context) {
+//         return Container(
+//           decoration: const BoxDecoration(
+//             color: Colors.white,
+//             borderRadius: BorderRadius.only(
+//               topLeft: Radius.circular(24),
+//               topRight: Radius.circular(24),
+//             ),
+//           ),
+//           padding: const EdgeInsets.all(20),
+//           child: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Row(
+//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                 children: [
+//                   Text(
+//                     plan['title'],
+//                     style: const TextStyle(
+//                       fontSize: 22,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                   IconButton(
+//                     onPressed: () => Navigator.pop(context),
+//                     icon: const Icon(Icons.close),
+//                   ),
+//                 ],
+//               ),
+//               const SizedBox(height: 16),
+//               Container(
+//                 padding: const EdgeInsets.all(16),
+//                 decoration: BoxDecoration(
+//                   color: secondaryColor.withOpacity(0.05),
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: Row(
+//                   children: [
+//                     Container(
+//                       padding: const EdgeInsets.all(12),
+//                       decoration: BoxDecoration(
+//                         color: secondaryColor.withOpacity(0.1),
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                       child: Image.asset(
+//                         plan['image'],
+//                         height: 60,
+//                         width: 60,
+//                       ),
+//                     ),
+//                     const SizedBox(width: 16),
+//                     Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Text(
+//                           '₹${plan['price'].toStringAsFixed(2)}',
+//                           style: const TextStyle(
+//                             fontSize: 24,
+//                             fontWeight: FontWeight.bold,
+//                             color: secondaryColor,
+//                           ),
+//                         ),
+//                         Text(
+//                           'per ${plan['duration']}',
+//                           style: TextStyle(
+//                             fontSize: 14,
+//                             color: Colors.grey[600],
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               const SizedBox(height: 24),
+//               const Text(
+//                 'What you get:',
+//                 style: TextStyle(
+//                   fontSize: 18,
+//                   fontWeight: FontWeight.bold,
+//                 ),
+//               ),
+//               const SizedBox(height: 12),
+//               ...plan['benefits'].map<Widget>((benefit) {
+//                 return Padding(
+//                   padding: const EdgeInsets.only(bottom: 8),
+//                   child: Row(
+//                     children: [
+//                       const Icon(
+//                         Icons.check_circle,
+//                         color: secondaryColor,
+//                         size: 20,
+//                       ),
+//                       const SizedBox(width: 12),
+//                       Text(
+//                         benefit,
+//                         style: const TextStyle(
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 );
+//               }).toList(),
+//               const SizedBox(height: 24),
+//               const Text(
+//                 'Subscription Details:',
+//                 style: TextStyle(
+//                   fontSize: 16,
+//                   fontWeight: FontWeight.bold,
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               Text(
+//                 'Your subscription will automatically renew every ${plan['duration']}. You can cancel or pause your subscription anytime before 12 AM on the day before your next scheduled delivery.',
+//                 style: TextStyle(
+//                   fontSize: 14,
+//                   color: Colors.grey[600],
+//                 ),
+//               ),
+//               const SizedBox(height: 24),
+//               SizedBox(
+//                 width: double.infinity,
+//                 child: ElevatedButton(
+//                   style: ElevatedButton.styleFrom(
+//                     primary: secondaryColor,
+//                     padding: const EdgeInsets.symmetric(vertical: 16),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(12),
+//                     ),
+//                   ),
+//                   onPressed: () {
+//                     Navigator.pop(context);
+//                     _confirmSubscription(context);
+//                   },
+//                   child: const Text(
+//                     'Subscribe Now',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//               const SizedBox(height: 16),
+//             ],
+//           ),
+//         );
+//       },
+//     );
+//   }
 
-  void getData() async {
-    final User user = FirebaseAuth.instance.currentUser!;
-    final String uid = user.uid.toString();
-    DocumentSnapshot snapshot = await db.collection('users').doc(uid).get();
-    DocumentSnapshot snap2 = await db.collection(('product')).doc(uid).get();
-    setState(() {
-      bill = (snapshot.data as Map<String, String>)['Bill']!;
-      plan = (snapshot.data as Map<String, String>)['Plan']!;
-      product = (snap2.data as Map<dynamic, dynamic>)['product']!;
-      namelist = product.keys.toList();
-      qlist = product.values.toList();
-      statusFirebase = (snapshot.data as Map<bool, bool>)['Status']!;
-    });
-    print(namelist);
-  }
+//   void _confirmSubscription(BuildContext context) {
+//     final plan = subscriptionPlans.firstWhere((plan) => plan['value'] == selectedPlan);
+    
+//     showModalBottomSheet(
+//       context: context,
+//       backgroundColor: Colors.transparent,
+//       isScrollControlled: true,
+//       builder: (context) {
+//         return StatefulBuilder(
+//           builder: (context, setState) {
+//             return Container(
+//               decoration: const BoxDecoration(
+//                 color: Colors.white,
+//                 borderRadius: BorderRadius.only(
+//                   topLeft: Radius.circular(24),
+//                   topRight: Radius.circular(24),
+//                 ),
+//               ),
+//               padding: const EdgeInsets.all(20),
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   const Text(
+//                     'Confirm Subscription',
+//                     style: TextStyle(
+//                       fontSize: 22,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 16),
+//                   Container(
+//                     padding: const EdgeInsets.all(16),
+//                     decoration: BoxDecoration(
+//                       color: secondaryColor.withOpacity(0.05),
+//                       borderRadius: BorderRadius.circular(12),
+//                     ),
+//                     child: Column(
+//                       children: [
+//                         Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                           children: [
+//                             Text(
+//                               plan['title'],
+//                               style: const TextStyle(
+//                                 fontSize: 18,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                             Text(
+//                               '₹${plan['price'].toStringAsFixed(2)}',
+//                               style: const TextStyle(
+//                                 fontSize: 18,
+//                                 fontWeight: FontWeight.bold,
+//                                 color: secondaryColor,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                         const SizedBox(height: 4),
+//                         Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                           children: [
+//                             Text(
+//                               'Duration',
+//                               style: TextStyle(
+//                                 fontSize: 14,
+//                                 color: Colors.grey[600],
+//                               ),
+//                             ),
+//                             Text(
+//                               'Per ${plan['duration']}',
+//                               style: TextStyle(
+//                                 fontSize: 14,
+//                                 color: Colors.grey[600],
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                         const Divider(height: 24),
+//                         Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                           children: [
+//                             const Text(
+//                               'Start Date',
+//                               style: TextStyle(
+//                                 fontSize: 14,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                             Text(
+//                               DateFormat('MMM dd, yyyy').format(DateTime.now().add(const Duration(days: 1))),
+//                               style: const TextStyle(
+//                                 fontSize: 14,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                           children: [
+//                             const Text(
+//                               'First Delivery',
+//                               style: TextStyle(
+//                                 fontSize: 14,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                             Text(
+//                               DateFormat('MMM dd, yyyy').format(DateTime.now().add(const Duration(days: 1))),
+//                               style: const TextStyle(
+//                                 fontSize: 14,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 24),
+//                   const Text(
+//                     'Payment Method',
+//                     style: TextStyle(
+//                       fontSize: 18,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
+//                   Container(
+//                     padding: const EdgeInsets.all(16),
+//                     decoration: BoxDecoration(
+//                       border: Border.all(color: Colors.grey.shade300),
+//                       borderRadius: BorderRadius.circular(12),
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         Container(
+//                           padding: const EdgeInsets.all(8),
+//                           decoration: BoxDecoration(
+//                             color: secondaryColor.withOpacity(0.1),
+//                             borderRadius: BorderRadius.circular(8),
+//                           ),
+//                           child: const Icon(
+//                             Icons.account_balance_wallet,
+//                             color: secondaryColor,
+//                           ),
+//                         ),
+//                         const SizedBox(width: 12),
+//                         Column(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             const Text(
+//                               'Wallet Balance',
+//                               style: TextStyle(
+//                                 fontSize: 16,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                             Text(
+//                               '₹1000.00',
+//                               style: TextStyle(
+//                                 fontSize: 14,
+//                                 color: Colors.grey[600],
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                         const Spacer(),
+//                         Radio(
+//                           value: 'wallet',
+//                           groupValue: 'wallet',
+//                           activeColor: secondaryColor,
+//                           onChanged: (value) {},
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Container(
+//                     padding: const EdgeInsets.all(16),
+//                     decoration: BoxDecoration(
+//                       border: Border.all(color: Colors.grey.shade300),
+//                       borderRadius: BorderRadius.circular(12),
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         Container(
+//                           padding: const EdgeInsets.all(8),
+//                           decoration: BoxDecoration(
+//                             color: Colors.orange.withOpacity(0.1),
+//                             borderRadius: BorderRadius.circular(8),
+//                           ),
+//                           child: const Icon(
+//                             Icons.add_card,
+//                             color: Colors.orange,
+//                           ),
+//                         ),
+//                         const SizedBox(width: 12),
+//                         const Text(
+//                           'Add Payment Method',
+//                           style: TextStyle(
+//                             fontSize: 16,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                         const Spacer(),
+//                         const Icon(
+//                           Icons.arrow_forward_ios,
+//                           size: 16,
+//                           color: Colors.grey,
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 24),
+//                   SizedBox(
+//                     width: double.infinity,
+//                     child: ElevatedButton(
+//                       style: ElevatedButton.styleFrom(
+//                         primary: secondaryColor,
+//                         padding: const EdgeInsets.symmetric(vertical: 16),
+//                         shape: RoundedRectangleBorder(
+//                           borderRadius: BorderRadius.circular(12),
+//                         ),
+//                       ),
+//                       onPressed: () {
+//                         Navigator.pop(context);
+//                         _showSuccessDialog(context);
+//                       },
+//                       child: const Text(
+//                         'Confirm Subscription',
+//                         style: TextStyle(
+//                           fontSize: 16,
+//                           fontWeight: FontWeight.bold,
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
+//                   SizedBox(
+//                     width: double.infinity,
+//                     child: TextButton(
+//                       onPressed: () {
+//                         Navigator.pop(context);
+//                       },
+//                       child: const Text(
+//                         'Cancel',
+//                         style: TextStyle(
+//                           fontSize: 16,
+//                           color: Colors.grey,
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
 
-  Future<ConfirmAction?> _asyncConfirmDialog(BuildContext context) async {
-    return showDialog<ConfirmAction>(
-      context: context,
-      barrierDismissible: false, // user must tap button for close dialog!
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('About changes'),
-          content: const Text(
-            'Your plan status will change from tomorrow morning!!',
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('CANCEL'),
-              onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.CANCEL);
-              },
-            ),
-            TextButton(
-              child: const Text('ACCEPT'),
-              onPressed: () {
-                DateTime now = DateTime.now();
-                DateTime open = dateformat.parse("05:00");
-                open = DateTime(
-                  now.year,
-                  now.month,
-                  now.day,
-                  open.hour,
-                  open.minute,
-                );
-                DateTime close = dateformat.parse("10:00");
-                close = DateTime(
-                  now.year,
-                  now.month,
-                  now.day,
-                  close.hour,
-                  close.minute,
-                );
-                if (now.isAfter(open) && now.isBefore(close)) {
-                  ToastContext().init(context);
-                  Toast.show(
-                    "You can't change your plan status \n between 5:00AM to 10:00 AM",
-                    duration: 3,
-                    gravity: 0,
-                    backgroundColor: Colors.black,
-                  );
-                } else {
-                  updateStatus();
-                  setState(() {
-                    (statusFirebase == true)
-                        ? stat = 'Pause Plan'
-                        : stat = 'Activate Plan';
-                  });
-                }
-                Navigator.of(context).pop(ConfirmAction.ACCEPT);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+//   void _showSuccessDialog(BuildContext context) {
+//     showDialog(
+//       context: context,
+//       builder: (BuildContext context) {
+//         return Dialog(
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(20),
+//           ),
+//           child: Padding(
+//             padding: const EdgeInsets.all(24.0),
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 Container(
+//                   padding: const EdgeInsets.all(16),
+//                   decoration: BoxDecoration(
+//                     color: Colors.green.shade50,
+//                     shape: BoxShape.circle,
+//                   ),
+//                   child: Icon(
+//                     Icons.check_circle,
+//                     color: Colors.green.shade600,
+//                     size: 60,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 24),
+//                 const Text(
+//                   'Subscription Successful!',
+//                   style: TextStyle(
+//                     fontSize: 20,
+//                     fontWeight: FontWeight.bold,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 16),
+//                 Text(
+//                   'Your subscription has been activated successfully. You will receive your first delivery tomorrow.',
+//                   textAlign: TextAlign.center,
+//                   style: TextStyle(
+//                     fontSize: 14,
+//                     color: Colors.grey[600],
+//                   ),
+//                 ),
+//                 const SizedBox(height: 24),
+//                 SizedBox(
+//                   width: double.infinity,
+//                   child: ElevatedButton(
+//                     style: ElevatedButton.styleFrom(
+//                       primary: secondaryColor,
+//                       padding: const EdgeInsets.symmetric(vertical: 16),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                     ),
+//                     onPressed: () {
+//                       Navigator.pop(context);
+//                       Navigator.pushReplacement(
+//                         context,
+//                         MaterialPageRoute(
+//                           builder: (context) => const SubscriptionManagementPage(),
+//                         ),
+//                       );
+//                     },
+//                     child: const Text(
+//                       'View My Subscriptions',
+//                       style: TextStyle(
+//                         fontSize: 16,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+// }
 
-  Future<void> updateStatus() async {
-    final User user = FirebaseAuth.instance.currentUser!;
-    final String uid = user.uid.toString();
-    DocumentSnapshot snapshot = await db.collection('users').doc(uid).get();
-    statusFirebase = (snapshot.data() as Map<String, dynamic>)['Status'];
-    if (statusFirebase == true) {
-      status = false;
-      FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'Status': status,
-      });
-    } else {
-      status = true;
-      FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'Status': status,
-      });
-    }
-  }
+// class SubscriptionCard extends StatelessWidget {
+//   final String title;
+//   final String description;
+//   final double price;
+//   final String duration;
+//   final List<String> benefits;
+//   final String image;
+//   final bool isSelected;
+//   final VoidCallback onTap;
 
-  Widget print(List<dynamic> list) {
-    String len = "";
-    for (int i = 0; i < list.length; i++) {
-      len = len + list[i] + "\n";
-    }
-    return Text(len, style: TextStyle(fontSize: 15.0, color: Colors.white));
-  }
+//   const SubscriptionCard({
+//     Key? key,
+//     required this.title,
+//     required this.description,
+//     required this.price,
+//     required this.duration,
+//     required this.benefits,
+//     required this.image,
+//     required this.isSelected,
+//     required this.onTap,
+//   }) : super(key: key);
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    getData();
-  }
+//   @override
+//   Widget build(BuildContext context) {
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Container(
+//         margin: const EdgeInsets.only(bottom: 16),
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(16),
+//           border: Border.all(
+//             color: isSelected ? Color.fromRGBO(22, 102, 225, 1) : Colors.transparent,
+//             width: 2,
+//           ),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.black.withOpacity(0.05),
+//               spreadRadius: 0,
+//               blurRadius: 10,
+//               offset: const Offset(0, 4),
+//             ),
+//           ],
+//         ),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // Image section
+//             ClipRRect(
+//               borderRadius: const BorderRadius.only(
+//                 topLeft: Radius.circular(14),
+//                 topRight: Radius.circular(14),
+//               ),
+//               child: Image.asset(
+//                 image,
+//                 height: 120,
+//                 width: double.infinity,
+//                 fit: BoxFit.cover,
+//               ),
+//             ),
+//             // Content section
+//             Padding(
+//               padding: const EdgeInsets.all(16),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       Text(
+//                         title,
+//                         style: const TextStyle(
+//                           fontSize: 18,
+//                           fontWeight: FontWeight.bold,
+//                         ),
+//                       ),
+//                       Container(
+//                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+//                         decoration: BoxDecoration(
+//                           color: isSelected
+//                               ? Color.fromRGBO(22, 102, 225, 1)
+//                               : Color.fromRGBO(22, 102, 225, 0.1),
+//                           borderRadius: BorderRadius.circular(20),
+//                         ),
+//                         child: Text(
+//                           isSelected ? 'Selected' : 'Select',
+//                           style: TextStyle(
+//                             fontSize: 12,
+//                             fontWeight: FontWeight.bold,
+//                             color: isSelected ? Colors.white : Color.fromRGBO(22, 102, 225, 1),
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Text(
+//                     description,
+//                     style: TextStyle(
+//                       fontSize: 14,
+//                       color: Colors.grey[600],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
+//                   Row(
+//                     children: [
+//                       Text(
+//                         '₹${price.toStringAsFixed(2)}',
+//                         style: const TextStyle(
+//                           fontSize: 20,
+//                           fontWeight: FontWeight.bold,
+//                           color: Color.fromRGBO(22, 102, 225, 1),
+//                         ),
+//                       ),
+//                       Text(
+//                         ' / $duration',
+//                         style: TextStyle(
+//                           fontSize: 14,
+//                           color: Colors.grey[600],
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 16),
+//                   const Text(
+//                     'Benefits:',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Column(
+//                     children: benefits
+//                         .take(2)
+//                         .map(
+//                           (benefit) => Padding(
+//                             padding: const EdgeInsets.only(bottom: 6),
+//                             child: Row(
+//                               children: [
+//                                 const Icon(
+//                                   Icons.check_circle,
+//                                   color: Color.fromRGBO(22, 102, 225, 1),
+//                                   size: 16,
+//                                 ),
+//                                 const SizedBox(width: 8),
+//                                 Expanded(
+//                                   child: Text(
+//                                     benefit,
+//                                     style: const TextStyle(
+//                                       fontSize: 14,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         )
+//                         .toList(),
+//                   ),
+//                   if (benefits.length > 2)
+//                     Text(
+//                       '+ ${benefits.length - 2} more benefits',
+//                       style: TextStyle(
+//                         fontSize: 14,
+//                         color: Color.fromRGBO(22, 102, 225, 1),
+//                         fontWeight: FontWeight.w500,
+//                       ),
+//                     ),
+//                 ],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body:
-          (plan == null)
-              ? Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  Container(
-                    width: MediaQuery.of(context).size.width,
-                    height: 250.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.all(Radius.circular(50.0)),
-                      image: DecorationImage(
-                        image: AssetImage('images/noplan.png'),
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width - 100.0,
-                    height: 45.0,
-                    child: MaterialButton(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
-                      elevation: 5.0,
-                      color: Color.fromRGBO(22, 102, 225, 1),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return radio();
-                            },
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Subscribe Plan',
-                        style: TextStyle(color: Colors.white, fontSize: 20.0),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-              : FadeAnimation(
-                1.0,
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: <Widget>[
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width - 70,
-                      height: 50.0,
-                      child: Card(
-                        color: Colors.transparent,
-                        elevation: 10.0,
-                        child: Container(
-                          padding: EdgeInsets.all(10.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: Text(
-                            'Current Plan',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 20.0,
-                              color: Color.fromRGBO(22, 102, 225, 1),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Card(
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
-                      child: Container(
-                        width: MediaQuery.of(context).size.width - 70.0,
-                        height: 150.0,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            fit: BoxFit.fill,
-                            image:
-                                (plan == 'weekly')
-                                    ? AssetImage('images/weekly.png')
-                                    : ((plan == 'monthly')
-                                        ? (AssetImage('images/monthly.png'))
-                                        : ((plan == 'yearly')
-                                            ? AssetImage('images/yearly.png')
-                                            : AssetImage('images/custom.png'))),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 10.0),
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width,
-                      child: Card(
-                        color: Colors.transparent,
-                        elevation: 10.0,
-                        child: Container(
-                          padding: EdgeInsets.only(top: 15.0, left: 15.0),
-                          decoration: BoxDecoration(
-                            color: Color.fromRGBO(22, 102, 225, 1),
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Products',
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 10.0),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: <Widget>[
-                                  Text(
-                                    'Product name',
-                                    style: TextStyle(
-                                      fontSize: 18.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Quantity',
-                                    style: TextStyle(
-                                      fontSize: 18.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: <Widget>[
-                                  print(namelist),
-                                  print(qlist),
-                                ],
-                              ),
-                              Container(
-                                width: MediaQuery.of(context).size.width - 40,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: <Widget>[
-                                  Text(
-                                    'Total (Per Day)',
-                                    style: TextStyle(
-                                      fontSize: 18.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    '₹$bill/-',
-                                    style: TextStyle(
-                                      fontSize: 18.0,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 10.0),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20.0),
-                    Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width - 100.0,
-                        height: 45.0,
-                        child: MaterialButton(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          elevation: 5.0,
-                          color: Color.fromRGBO(22, 102, 225, 1),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) {
-                                  return radio();
-                                },
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Change Plan',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Container(
-                        margin: EdgeInsets.only(top: 20.0),
-                        width: MediaQuery.of(context).size.width - 100.0,
-                        height: 45.0,
-                        child: MaterialButton(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          elevation: 5.0,
-                          color: Color.fromRGBO(22, 102, 225, 1),
-                          onPressed: () {
-                            _asyncConfirmDialog(context);
-                          },
-                          child: Text(
-                            stat,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-    );
-  }
-}
+// class SubscriptionManagementPage extends StatefulWidget {
+//   const SubscriptionManagementPage({Key? key}) : super(key: key);
+
+//   @override
+//   _SubscriptionManagementPageState createState() => _SubscriptionManagementPageState();
+// }
+
+// class _SubscriptionManagementPageState extends State<SubscriptionManagementPage> {
+//   // Color palette
+//   static const Color primaryColor = Color(0xFFFAFAFA);
+//   static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1);
+//   static const Color backgroundColor = Color(0xFFFAFAFA);
+//   static const Color accentColor = Color.fromRGBO(22, 102, 225, 1);
+
+//   // Sample active subscription
+//   final Map<String, dynamic> activeSubscription = {
+//     'title': 'Weekly Plan',
+//     'nextDelivery': '2025-03-14',
+//     'items': ['Milk (1L)', 'Yogurt (500g)', 'Butter (200g)'],
+//     'price': 149.99,
+//     'status': 'Active',
+//     'image': 'images/weekly.png',
+//     'canCancel': true,
+//   };
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: backgroundColor,
+//       appBar: AppBar(
+//         backgroundColor: primaryColor,
+//         elevation: 0,
+//         title: const Text(
+//           'My Subscriptions',
+//           style: TextStyle(
+//             color: secondaryColor,
+//             fontWeight: FontWeight.bold,
+//           ),
+//         ),
+//         iconTheme: const IconThemeData(color: secondaryColor),
+//       ),
+//       body: SingleChildScrollView(
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Padding(
+//               padding: const EdgeInsets.all(16.0),
+//               child: Row(
+//                 children: [
+//                   Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: BoxDecoration(
+//                       color: secondaryColor.withOpacity(0.1),
+//                       borderRadius: BorderRadius.circular(8),
+//                     ),
+//                     child: const Icon(
+//                       Icons.calendar_today,
+//                       color: secondaryColor,
+//                     ),
+//                   ),
+//                   const SizedBox(width: 12),
+//                   Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       const Text(
+//                         'Active Subscription',
+//                         style: TextStyle(
+//                           fontSize: 18,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.black87,
+//                         ),
+//                       ),
+//                       Text(
+//                         'Manage your current subscriptions',
+//                         style: TextStyle(
+//                           fontSize: 14,
+//                           color: Colors.black54,
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             Padding(
+//               padding: const EdgeInsets.all(16.0),
+//               child: Card(
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(16),
+//                 ),
+//                 elevation: 4,
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Container(
+//                       padding: const EdgeInsets.all(16),
+//                       decoration: BoxDecoration(
+//                         color: secondaryColor,
+//                         borderRadius: const BorderRadius.only(
+//                           topLeft: Radius.circular(16),
+//                           topRight: Radius.circular(16),
+//                         ),
+//                       ),
+//                       child: Row(
+//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                         children: [
+//                           const Text(
+//                             'Weekly Plan',
+//                             style: TextStyle(
+//                               fontSize: 18,
+//                               fontWeight: FontWeight.bold,
+//                               color: Colors.white,
+//                             ),
+//                           ),
+//                           Container(
+//                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+//                             decoration: BoxDecoration(
+//                               color: Colors.white,
+//                               borderRadius: BorderRadius.circular(12),
+//                             ),
+//                             child: const Text(
+//                               'Active',
+//                               style: TextStyle(
+//                                 fontSize: 12,
+//                                 fontWeight: FontWeight.bold,
+//                                 color: secondaryColor,
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     Padding(
+//                       padding: const EdgeInsets.all(16),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Row(
+//                             children: [
+//                               const Icon(
+//                                 Icons.timer,
+//                                 size: 18,
+//                                 color: Colors.grey,
+//                               ),
+//                               const SizedBox(width: 8),
+//                               const Text(
+//                                 'Next Delivery Date',
+//                                 style: TextStyle(
+//                                   fontSize: 14,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                               const Spacer(),
+//                               Text(
+//                                 '25th Dec, 2023',
+//                                 style: const TextStyle(
+//                                   fontSize: 14,
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           const SizedBox(height: 8),
+//                           Row(
+//                             children: [
+//                               const Icon(
+//                                 Icons.location_on,
+//                                 size: 18,
+//                                 color: Colors.grey,
+//                               ),
+//                               const SizedBox(width: 8),
+//                               const Text(
+//                                 'Delivery Address',
+//                                 style: TextStyle(
+//                                   fontSize: 14,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                               const Spacer(),
+//                               Text(
+//                                 '123 Main St, City, Country',
+//                                 style: const TextStyle(
+//                                   fontSize: 14,
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           const SizedBox(height: 8),
+//                           Row(
+//                             children: [
+//                               const Icon(
+//                                 Icons.payment,
+//                                 size: 18,
+//                                 color: Colors.grey,
+//                               ),
+//                               const SizedBox(width: 8),
+//                               const Text(
+//                                 'Payment Method',
+//                                 style: TextStyle(
+//                                   fontSize: 14,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                               const Spacer(),
+//                               Text(
+//                                 'Credit Card',
+//                                 style: const TextStyle(
+//                                   fontSize: 14,
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     const SizedBox(height: 24),
+//                     const Text(
+//                       'Order Summary',
+//                       style: TextStyle(
+//                         fontSize: 18,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 12),
+//                     Container(
+//                       padding: const EdgeInsets.all(16),
+//                       decoration: BoxDecoration(
+//                         border: Border.all(color: Colors.grey.shade300),
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Row(
+//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                             children: [
+//                               const Text(
+//                                 'Subtotal',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.bold,
+//                                 ),
+//                               ),
+//                               Text(
+//                                 '₹900.00',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           const SizedBox(height: 8),
+//                           Row(
+//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                             children: [
+//                               const Text(
+//                                 'Tax',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.bold,
+//                                 ),
+//                               ),
+//                               Text(
+//                                 '₹100.00',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           const SizedBox(height: 8),
+//                           Row(
+//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                             children: [
+//                               const Text(
+//                                 'Total',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.bold,
+//                                 ),
+//                               ),
+//                               Text(
+//                                 '₹1000.00',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   color: Colors.grey[600],
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

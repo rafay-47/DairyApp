@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dairyapp/Screens/subscribeScreen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:dairyapp/Screens/SubscribedPage.dart';
@@ -37,7 +38,7 @@ class _ProductDetailsState extends State<ProductDetails> {
   final List<Widget> screens = [
     Home(),
     ProfilePage(),
-    SubscribedPlan(),
+    radio(),
     Settings.Settings(onSignedOut: () {}),
   ]; // to store nested tabs
 
