@@ -12,7 +12,6 @@ class UserOrders extends StatefulWidget {
 class _UserOrdersState extends State<UserOrders> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? currentUser = FirebaseAuth.instance.currentUser;
-  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +20,7 @@ class _UserOrdersState extends State<UserOrders> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('My Orders'),
-          backgroundColor: Color.fromRGBO(22, 102, 225, 1),
+          backgroundColor: Constants.accentColor,
           bottom: TabBar(
             tabs: [Tab(text: 'Active Orders'), Tab(text: 'Past Orders')],
           ),
@@ -36,18 +35,25 @@ class _UserOrdersState extends State<UserOrders> {
     );
   }
 
+  Stream<QuerySnapshot> _getOrders(bool isActive) {
+    if (currentUser == null) {
+      return Stream.empty();
+    }
+
+    return _firestore
+        .collection('orders')
+        .where('userId', isEqualTo: currentUser!.uid)
+        .where('isActive', isEqualTo: isActive)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
   Widget _buildOrdersList(bool isActive) {
     return StreamBuilder<QuerySnapshot>(
-      stream:
-          _firestore
-              .collection('orders')
-              .where('uid', isEqualTo: currentUser?.uid)
-              .where('isActive', isEqualTo: isActive)
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
+      stream: _getOrders(isActive),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(child: Text('Error loading orders'));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -61,11 +67,23 @@ class _UserOrdersState extends State<UserOrders> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.grey),
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
                 SizedBox(height: 16),
                 Text(
                   isActive ? 'No active orders' : 'No past orders',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  isActive
+                      ? 'Your active orders will appear here'
+                      : 'Your order history will appear here',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -73,32 +91,62 @@ class _UserOrdersState extends State<UserOrders> {
         }
 
         return ListView.builder(
+          padding: EdgeInsets.all(16),
           itemCount: orders.length,
           itemBuilder: (context, index) {
-            final order = orders[index].data() as Map<String, dynamic>;
-            final orderTime = (order['timestamp'] as Timestamp).toDate();
-            final canCancel = _canCancelOrder(orderTime);
-            final items = order['Array'] as List<dynamic>? ?? [];
+            final orderData = orders[index].data() as Map<String, dynamic>;
+            final orderItems = orderData['items'] as List<dynamic>;
+            final orderDate = (orderData['timestamp'] as Timestamp).toDate();
+            final orderTotal = orderData['total'] ?? 0.0;
+            final orderStatus = orderData['status'] ?? 'Processing';
+            final orderNumber =
+                orderData['orderNumber'] ?? orders[index].id.substring(0, 8);
+            final deliveryCharge = orderData['deliveryCharge'] ?? 0.0;
 
             return Card(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: ExpansionTile(
                 title: Text(
-                  'Order #${orders[index].id.substring(0, 8)}',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  'Order #$orderNumber',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: 4),
                     Text(
-                      'Ordered on: ${DateFormat('MMM dd, yyyy hh:mm a').format(orderTime)}',
+                      'Ordered on: ${DateFormat('MMM dd, yyyy hh:mm a').format(orderDate)}',
+                      style: TextStyle(fontSize: 13),
                     ),
-                    Text(
-                      'Total: ₹${order['total'] ?? '0'}',
-                      style: TextStyle(
-                        color: Color.fromRGBO(22, 102, 225, 1),
-                        fontWeight: FontWeight.bold,
-                      ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text('Status: ', style: TextStyle(fontSize: 13)),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(
+                              orderStatus,
+                            ).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            orderStatus,
+                            style: TextStyle(
+                              color: _getStatusColor(orderStatus),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -109,46 +157,96 @@ class _UserOrdersState extends State<UserOrders> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Items:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          'Order Details',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                        SizedBox(height: 8),
-                        ...items
+                        Divider(),
+                        ...orderItems
                             .map(
                               (item) => Padding(
-                                padding: EdgeInsets.only(bottom: 4),
-                                child: Text('• $item'),
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${item['name']} x${item['quantity']}',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                    Text(
+                                      '₹${(item['price'] * (item['quantity'] ?? 1)).toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                             .toList(),
-                        SizedBox(height: 16),
-                        if (isActive && canCancel)
+                        Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Delivery Charge'),
+                            Text(
+                              deliveryCharge > 0
+                                  ? '₹${deliveryCharge.toStringAsFixed(2)}'
+                                  : 'FREE',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: deliveryCharge > 0 ? null : Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Amount',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              '₹${orderTotal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Constants.accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isActive && orderStatus == 'Processing') ...[
+                          SizedBox(height: 16),
                           Center(
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  () =>
-                                      _showCancelConfirmation(orders[index].id),
-                              icon: Icon(Icons.cancel),
-                              label: Text('Cancel Order'),
+                            child: ElevatedButton(
+                              onPressed: () => _cancelOrder(orders[index].id),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                                 padding: EdgeInsets.symmetric(
                                   horizontal: 24,
                                   vertical: 12,
                                 ),
                               ),
+                              child: Text('Cancel Order'),
                             ),
                           ),
-                        if (isActive && !canCancel)
-                          Center(
-                            child: Text(
-                              'Orders can only be cancelled before 12 AM',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -161,46 +259,26 @@ class _UserOrdersState extends State<UserOrders> {
     );
   }
 
-  bool _canCancelOrder(DateTime orderTime) {
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1);
-    return orderTime.isBefore(midnight);
-  }
-
-  Future<void> _showCancelConfirmation(String orderId) async {
-    return showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Cancel Order'),
-            content: Text('Are you sure you want to cancel this order?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('No'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _cancelOrder(orderId);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: Text('Yes, Cancel'),
-              ),
-            ],
-          ),
-    );
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'processing':
+        return Colors.orange;
+      case 'shipped':
+        return Colors.blue;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Future<void> _cancelOrder(String orderId) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       await _firestore.collection('orders').doc(orderId).update({
+        'status': 'Cancelled',
         'isActive': false,
-        'status': 'cancelled',
         'cancelledAt': FieldValue.serverTimestamp(),
       });
 
@@ -210,17 +288,13 @@ class _UserOrdersState extends State<UserOrders> {
           backgroundColor: Colors.green,
         ),
       );
-    } catch (e) {
+    } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error cancelling order: $e'),
+          content: Text('Failed to cancel order: $error'),
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 }

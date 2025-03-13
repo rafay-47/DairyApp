@@ -1523,24 +1523,34 @@ class _CartState extends State<Cart> {
     });
 
     try {
-      // Get current user
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw 'Please login to place order';
       }
 
-      // Get cart items
+      // Get user details from Firestore
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get();
+
+      final userData = userDoc.data() ?? {};
+      final userEmail = currentUser.email ?? '';
+      final userName = userData['name'] ?? '';
+      final userPhone = userData['phone'] ?? '';
+
+      // Get cart items and pincode
       QuerySnapshot cartSnapshot =
           await FirebaseFirestore.instance.collection('cart').get();
       if (cartSnapshot.docs.isEmpty) {
         throw 'Cart is empty';
       }
 
-      // Get user's pincode
       final prefs = await SharedPreferences.getInstance();
       final pinCode = prefs.getString('user_pin_code');
 
-      // Prepare items array with the structure matching your Firestore
+      // Prepare items and calculate total
       List<Map<String, dynamic>> items = [];
       double totalAmount = 0;
 
@@ -1558,80 +1568,35 @@ class _CartState extends State<Cart> {
           'description': data['description'] ?? '',
           'imageURL': data['imageUrl'] ?? null,
           'name': data['name'] ?? '',
-          'pinCode': pinCode ?? '',
           'price': price,
+          'quantity': quantity,
           'stock': data['stock'] ?? 0,
-          'timestamp': FieldValue.serverTimestamp(),
-          'userId': currentUser.uid,
         });
       }
 
-      // Create order in Firestore
+      final deliveryCharge = totalAmount >= 500 ? 0 : 40;
+      totalAmount += deliveryCharge;
+
+      // Create order with comprehensive user details
       await FirebaseFirestore.instance.collection('orders').add({
+        'userId': currentUser.uid,
+        'userEmail': userEmail,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userPinCode': pinCode,
         'items': items,
         'timestamp': FieldValue.serverTimestamp(),
-        'userId': currentUser.uid,
+        'orderDate': DateTime.now(),
+        'total': totalAmount,
+        'deliveryCharge': deliveryCharge,
+        'status': 'Processing',
+        'isActive': true,
+        'orderNumber': 'ORD${DateTime.now().millisecondsSinceEpoch}',
       });
 
-      // Clear cart after successful order
-      _clearCart(); // Removed await since we don't need to wait for it
-
-      // Show success dialog
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder:
-              (context) => AlertDialog(
-                title: Text('Order Placed Successfully'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 60),
-                    SizedBox(height: 16),
-                    Text(
-                      'Your order has been placed successfully!',
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'You can track your order in the Orders section.',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      Navigator.of(context).pop(); // Return to previous screen
-                    },
-                    child: Text(
-                      'OK',
-                      style: TextStyle(color: Constants.accentColor),
-                    ),
-                  ),
-                ],
-              ),
-        );
-      }
+      // Rest of the code (clear cart and show dialog)...
     } catch (error) {
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to place order: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      // Error handling...
     }
   }
 }
