@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'SubscribedPage.dart';
 import 'cart.dart';
 import '../Constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'UserOrders.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -37,6 +39,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     screens = [
       CategoriesList(pinCode: userPinCode),
       ProfilePage(),
+      //UserOrders(),
+      OrderHistoryPage(),
       radio(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
@@ -267,6 +271,12 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           label: 'Profile',
           index: 1,
           screen: screens[1],
+        ),
+        _buildTabBarItem(
+          icon: Icons.shopping_bag,
+          label: 'User_Orders',
+          index: 2,
+          screen: screens[2],
         ),
       ],
     );
@@ -1507,58 +1517,122 @@ class _CartState extends State<Cart> {
         });
   }
 
-  void _proceedToCheckout() {
+  void _proceedToCheckout() async {
     setState(() {
       isLoading = true;
     });
 
-    // Simulate checkout process
-    Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        isLoading = false;
+    try {
+      // Get current user
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw 'Please login to place order';
+      }
+
+      // Get cart items
+      QuerySnapshot cartSnapshot =
+          await FirebaseFirestore.instance.collection('cart').get();
+      if (cartSnapshot.docs.isEmpty) {
+        throw 'Cart is empty';
+      }
+
+      // Get user's pincode
+      final prefs = await SharedPreferences.getInstance();
+      final pinCode = prefs.getString('user_pin_code');
+
+      // Prepare items array with the structure matching your Firestore
+      List<Map<String, dynamic>> items = [];
+      double totalAmount = 0;
+
+      for (var doc in cartSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final price =
+            data['price'] != null
+                ? double.parse(data['price'].toString())
+                : 0.0;
+        final quantity = data['quantity'] ?? 1;
+        totalAmount += price * quantity;
+
+        items.add({
+          'category': data['category'] ?? '',
+          'description': data['description'] ?? '',
+          'imageURL': data['imageUrl'] ?? null,
+          'name': data['name'] ?? '',
+          'pinCode': pinCode ?? '',
+          'price': price,
+          'stock': data['stock'] ?? 0,
+          'timestamp': FieldValue.serverTimestamp(),
+          'userId': currentUser.uid,
+        });
+      }
+
+      // Create order in Firestore
+      await FirebaseFirestore.instance.collection('orders').add({
+        'items': items,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': currentUser.uid,
       });
 
-      // Show order confirmation
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Text('Order Placed Successfully'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 60),
-                  SizedBox(height: 16),
-                  Text(
-                    'Your order has been placed successfully!',
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'You can track your order in the Orders section.',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    textAlign: TextAlign.center,
+      // Clear cart after successful order
+      _clearCart(); // Removed await since we don't need to wait for it
+
+      // Show success dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Order Placed Successfully'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 60),
+                    SizedBox(height: 16),
+                    Text(
+                      'Your order has been placed successfully!',
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'You can track your order in the Orders section.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      Navigator.of(context).pop(); // Return to previous screen
+                    },
+                    child: Text(
+                      'OK',
+                      style: TextStyle(color: Constants.accentColor),
+                    ),
                   ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // Clear cart after successful order
-                    _clearCart();
-                    // Navigate back to home
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    'OK',
-                    style: TextStyle(color: Constants.accentColor),
-                  ),
-                ),
-              ],
-            ),
-      );
-    });
+        );
+      }
+    } catch (error) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to place order: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 }
 

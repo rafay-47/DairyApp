@@ -252,6 +252,7 @@ class LoginState extends State<LoginPage> {
     );
   }
 
+  // In your LoginState class, update only the signIn function
   Future<void> signIn() async {
     final formState = _formkey.currentState;
     if (formState != null && formState.validate()) {
@@ -260,19 +261,31 @@ class LoginState extends State<LoginPage> {
           isLoading = true;
         });
 
-        // Authenticate the user
+        // Check user status before login
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where('Email', isEqualTo: email)
+                .get();
+
+        if (userDoc.docs.isNotEmpty) {
+          final userData = userDoc.docs.first.data();
+          if (userData['Status'] == false) {
+            throw firebase_auth.FirebaseAuthException(
+              code: 'user-disabled',
+              message: 'Account deactivated. Contact administrator.',
+            );
+          }
+        }
+
+        // Your existing authentication code
         await firebase_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        // Important: Force a rebuild of the root widget tree
         if (mounted) {
-          // First call the callback
           widget.onSignedIn();
-
-          // Then completely restart the navigation by pushing a replacement
-          // This forces the entire app to rebuild from the root
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => rootpage()),
             (route) => false,
