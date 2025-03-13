@@ -3,7 +3,6 @@ import 'package:dairyapp/Screens/homepage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:dairyapp/Animations/FadeAnimation.dart';
-import 'package:dairyapp/Screens/subscribeScreen.dart';
 import 'package:dairyapp/users.dart';
 
 import '../main.dart';

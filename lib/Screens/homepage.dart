@@ -1,15 +1,13 @@
-import 'package:dairyapp/Screens/subscribeScreen.dart';
+import 'package:dairyapp/Screens/SubscribedPage.dart';
+import 'package:dairyapp/Screens/subscriptionPage.dart';
 import 'package:double_back_to_close_app/double_back_to_close_app.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dairyapp/Screens/profile.dart';
 import 'package:dairyapp/Screens/Settings.dart' as settings;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'SubscribedPage.dart';
-import 'cart.dart';
 import '../Constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'UserOrders.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -41,7 +39,7 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
       ProfilePage(),
       //UserOrders(),
       OrderHistoryPage(),
-      radio(),
+      UserSubscriptionsPage(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
     currentScreen = screens[0];
@@ -289,14 +287,14 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
         _buildTabBarItem(
           icon: Icons.assignment,
           label: 'Plans',
-          index: 2,
-          screen: screens[2],
+          index: 3,
+          screen: screens[3],
         ),
         _buildTabBarItem(
           icon: Icons.settings,
           label: 'Settings',
-          index: 3,
-          screen: screens[3],
+          index: 4,
+          screen: screens[4],
         ),
         SizedBox(width: 30.0),
       ],
@@ -336,7 +334,6 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     );
   }
 }
-
 
 // Displays products for a given category in a grid layout.
 class ProductsByCategoryPage extends StatelessWidget {
@@ -562,6 +559,26 @@ class ProductsByCategoryPage extends StatelessWidget {
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
                                             color: Constants.accentColor,
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => SubscriptionDialog(
+                                                    productId: productId,
+                                                    productName: productName,
+                                                    productDescription: description,
+                                                    productPrice: double.parse(productPrice),
+                                                  ),
+                                            );
+                                          },
+                                          child: Text('Subscribe'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orange,
                                           ),
                                         ),
                                         InkWell(

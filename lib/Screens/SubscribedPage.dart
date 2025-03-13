@@ -1,1158 +1,563 @@
-// import 'package:flutter/material.dart';
-// import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
-// class SubscriptionPage extends StatefulWidget {
-//   const SubscriptionPage({Key? key}) : super(key: key);
+class UserSubscriptionsPage extends StatefulWidget {
+  const UserSubscriptionsPage({Key? key}) : super(key: key);
 
-//   @override
-//   _SubscriptionPageState createState() => _SubscriptionPageState();
-// }
+  @override
+  _UserSubscriptionsPageState createState() => _UserSubscriptionsPageState();
+}
 
-// class _SubscriptionPageState extends State<SubscriptionPage> {
-//   String? selectedPlan;
-  
-//   // Define color palette
-//   static const Color primaryColor = Color(0xFFFAFAFA);
-//   static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1);
-//   static const Color backgroundColor = Color(0xFFFAFAFA);
-//   static const Color accentColor = Color.fromRGBO(22, 102, 225, 1);
+class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  bool _isLoading = false;
 
-//   // Sample data for subscription plans
-//   final List<Map<String, dynamic>> subscriptionPlans = [
-//     {
-//       'title': 'Weekly Plan',
-//       'description': 'Fresh dairy products delivered weekly',
-//       'price': 149.99,
-//       'duration': 'week',
-//       'benefits': ['Free delivery', '10% off on all products', 'Priority customer support'],
-//       'image': 'images/weekly.png',
-//       'value': 'weekly'
-//     },
-//     {
-//       'title': 'Monthly Plan',
-//       'description': 'Save more with monthly deliveries',
-//       'price': 549.99,
-//       'duration': 'month',
-//       'benefits': ['Free delivery', '15% off on all products', 'Priority customer support', 'Exclusive monthly offers'],
-//       'image': 'images/monthly.png',
-//       'value': 'monthly'
-//     },
-//     {
-//       'title': 'Yearly Plan',
-//       'description': 'Best value for loyal customers',
-//       'price': 5999.99,
-//       'duration': 'year',
-//       'benefits': ['Free delivery', '20% off on all products', 'Premium customer support', 'Exclusive yearly offers', 'Surprise gifts'],
-//       'image': 'images/yearly.png',
-//       'value': 'yearly'
-//     },
-//   ];
+  // Get the start date for a subscription (today or subscription start date)
+  DateTime _getStartDate(DocumentSnapshot subscription) {
+    try {
+      DateTime startDate = subscription['startDate']?.toDate() ?? DateTime.now();
+      DateTime today = DateTime.now();
+      return startDate.isBefore(today) ? today : startDate;
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: backgroundColor,
-//       appBar: AppBar(
-//         backgroundColor: primaryColor,
-//         elevation: 0,
-//         title: const Text(
-//           'Subscription Plans',
-//           style: TextStyle(
-//             color: secondaryColor,
-//             fontWeight: FontWeight.bold,
-//           ),
-//         ),
-//         iconTheme: const IconThemeData(color: secondaryColor),
-//       ),
-//       body: SafeArea(
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.all(16.0),
-//               child: Row(
-//                 children: [
-//                   Container(
-//                     padding: const EdgeInsets.all(8),
-//                     decoration: BoxDecoration(
-//                       color: secondaryColor.withOpacity(0.1),
-//                       borderRadius: BorderRadius.circular(8),
-//                     ),
-//                     child: const Icon(
-//                       Icons.calendar_month,
-//                       color: secondaryColor,
-//                     ),
-//                   ),
-//                   const SizedBox(width: 12),
-//                   Column(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     children: [
-//                       const Text(
-//                         'Subscribe & Save',
-//                         style: TextStyle(
-//                           fontSize: 18,
-//                           fontWeight: FontWeight.bold,
-//                           color: Colors.black87,
-//                         ),
-//                       ),
-//                       Text(
-//                         'Choose a plan that works for you',
-//                         style: TextStyle(
-//                           fontSize: 14,
-//                           color: Colors.black54,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             Expanded(
-//               child: ListView.builder(
-//                 padding: const EdgeInsets.all(16),
-//                 itemCount: subscriptionPlans.length,
-//                 itemBuilder: (context, index) {
-//                   final plan = subscriptionPlans[index];
-//                   return SubscriptionCard(
-//                     title: plan['title'],
-//                     description: plan['description'],
-//                     price: plan['price'],
-//                     duration: plan['duration'],
-//                     benefits: List<String>.from(plan['benefits']),
-//                     image: plan['image'],
-//                     isSelected: selectedPlan == plan['value'],
-//                     onTap: () {
-//                       setState(() {
-//                         selectedPlan = plan['value'];
-//                       });
-//                       _showSubscriptionDetails(context, plan);
-//                     },
-//                   );
-//                 },
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//       bottomNavigationBar: selectedPlan != null
-//           ? Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-//               decoration: BoxDecoration(
-//                 color: Colors.white,
-//                 boxShadow: [
-//                   BoxShadow(
-//                     color: Colors.black12,
-//                     blurRadius: 4,
-//                     offset: Offset(0, -2),
-//                   ),
-//                 ],
-//               ),
-//               child: ElevatedButton(
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: secondaryColor,
-//                   padding: const EdgeInsets.symmetric(vertical: 16),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(12),
-//                   ),
-//                 ),
-//                 onPressed: () {
-//                   _confirmSubscription(context);
-//                 },
-//                 child: const Text(
-//                   'Subscribe Now',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     fontWeight: FontWeight.bold,
-//                   ),
-//                 ),
-//               ),
-//             )
-//           : null,
-//     );
-//   }
-
-//   void _showSubscriptionDetails(BuildContext context, Map<String, dynamic> plan) {
-//     showModalBottomSheet(
-//       context: context,
-//       backgroundColor: Colors.transparent,
-//       isScrollControlled: true,
-//       builder: (context) {
-//         return Container(
-//           decoration: const BoxDecoration(
-//             color: Colors.white,
-//             borderRadius: BorderRadius.only(
-//               topLeft: Radius.circular(24),
-//               topRight: Radius.circular(24),
-//             ),
-//           ),
-//           padding: const EdgeInsets.all(20),
-//           child: Column(
-//             mainAxisSize: MainAxisSize.min,
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                 children: [
-//                   Text(
-//                     plan['title'],
-//                     style: const TextStyle(
-//                       fontSize: 22,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   IconButton(
-//                     onPressed: () => Navigator.pop(context),
-//                     icon: const Icon(Icons.close),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 16),
-//               Container(
-//                 padding: const EdgeInsets.all(16),
-//                 decoration: BoxDecoration(
-//                   color: secondaryColor.withOpacity(0.05),
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//                 child: Row(
-//                   children: [
-//                     Container(
-//                       padding: const EdgeInsets.all(12),
-//                       decoration: BoxDecoration(
-//                         color: secondaryColor.withOpacity(0.1),
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                       child: Image.asset(
-//                         plan['image'],
-//                         height: 60,
-//                         width: 60,
-//                       ),
-//                     ),
-//                     const SizedBox(width: 16),
-//                     Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           '₹${plan['price'].toStringAsFixed(2)}',
-//                           style: const TextStyle(
-//                             fontSize: 24,
-//                             fontWeight: FontWeight.bold,
-//                             color: secondaryColor,
-//                           ),
-//                         ),
-//                         Text(
-//                           'per ${plan['duration']}',
-//                           style: TextStyle(
-//                             fontSize: 14,
-//                             color: Colors.grey[600],
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               const SizedBox(height: 24),
-//               const Text(
-//                 'What you get:',
-//                 style: TextStyle(
-//                   fontSize: 18,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               const SizedBox(height: 12),
-//               ...plan['benefits'].map<Widget>((benefit) {
-//                 return Padding(
-//                   padding: const EdgeInsets.only(bottom: 8),
-//                   child: Row(
-//                     children: [
-//                       const Icon(
-//                         Icons.check_circle,
-//                         color: secondaryColor,
-//                         size: 20,
-//                       ),
-//                       const SizedBox(width: 12),
-//                       Text(
-//                         benefit,
-//                         style: const TextStyle(
-//                           fontSize: 16,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 );
-//               }).toList(),
-//               const SizedBox(height: 24),
-//               const Text(
-//                 'Subscription Details:',
-//                 style: TextStyle(
-//                   fontSize: 16,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               const SizedBox(height: 8),
-//               Text(
-//                 'Your subscription will automatically renew every ${plan['duration']}. You can cancel or pause your subscription anytime before 12 AM on the day before your next scheduled delivery.',
-//                 style: TextStyle(
-//                   fontSize: 14,
-//                   color: Colors.grey[600],
-//                 ),
-//               ),
-//               const SizedBox(height: 24),
-//               SizedBox(
-//                 width: double.infinity,
-//                 child: ElevatedButton(
-//                   style: ElevatedButton.styleFrom(
-//                     primary: secondaryColor,
-//                     padding: const EdgeInsets.symmetric(vertical: 16),
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                   ),
-//                   onPressed: () {
-//                     Navigator.pop(context);
-//                     _confirmSubscription(context);
-//                   },
-//                   child: const Text(
-//                     'Subscribe Now',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 16),
-//             ],
-//           ),
-//         );
-//       },
-//     );
-//   }
-
-//   void _confirmSubscription(BuildContext context) {
-//     final plan = subscriptionPlans.firstWhere((plan) => plan['value'] == selectedPlan);
+  // Calculate the delivery days based on start date and plan
+  List<DateTime> _getDeliveryDates(DocumentSnapshot subscription) {
+    String planName = subscription['planName'] ?? 'weekly';
+    DateTime startDate = _getStartDate(subscription);
     
-//     showModalBottomSheet(
-//       context: context,
-//       backgroundColor: Colors.transparent,
-//       isScrollControlled: true,
-//       builder: (context) {
-//         return StatefulBuilder(
-//           builder: (context, setState) {
-//             return Container(
-//               decoration: const BoxDecoration(
-//                 color: Colors.white,
-//                 borderRadius: BorderRadius.only(
-//                   topLeft: Radius.circular(24),
-//                   topRight: Radius.circular(24),
-//                 ),
-//               ),
-//               padding: const EdgeInsets.all(20),
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   const Text(
-//                     'Confirm Subscription',
-//                     style: TextStyle(
-//                       fontSize: 22,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 16),
-//                   Container(
-//                     padding: const EdgeInsets.all(16),
-//                     decoration: BoxDecoration(
-//                       color: secondaryColor.withOpacity(0.05),
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     child: Column(
-//                       children: [
-//                         Row(
-//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                           children: [
-//                             Text(
-//                               plan['title'],
-//                               style: const TextStyle(
-//                                 fontSize: 18,
-//                                 fontWeight: FontWeight.bold,
-//                               ),
-//                             ),
-//                             Text(
-//                               '₹${plan['price'].toStringAsFixed(2)}',
-//                               style: const TextStyle(
-//                                 fontSize: 18,
-//                                 fontWeight: FontWeight.bold,
-//                                 color: secondaryColor,
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const SizedBox(height: 4),
-//                         Row(
-//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                           children: [
-//                             Text(
-//                               'Duration',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 color: Colors.grey[600],
-//                               ),
-//                             ),
-//                             Text(
-//                               'Per ${plan['duration']}',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 color: Colors.grey[600],
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const Divider(height: 24),
-//                         Row(
-//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                           children: [
-//                             const Text(
-//                               'Start Date',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 fontWeight: FontWeight.bold,
-//                               ),
-//                             ),
-//                             Text(
-//                               DateFormat('MMM dd, yyyy').format(DateTime.now().add(const Duration(days: 1))),
-//                               style: const TextStyle(
-//                                 fontSize: 14,
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const SizedBox(height: 8),
-//                         Row(
-//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                           children: [
-//                             const Text(
-//                               'First Delivery',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 fontWeight: FontWeight.bold,
-//                               ),
-//                             ),
-//                             Text(
-//                               DateFormat('MMM dd, yyyy').format(DateTime.now().add(const Duration(days: 1))),
-//                               style: const TextStyle(
-//                                 fontSize: 14,
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                   const SizedBox(height: 24),
-//                   const Text(
-//                     'Payment Method',
-//                     style: TextStyle(
-//                       fontSize: 18,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 12),
-//                   Container(
-//                     padding: const EdgeInsets.all(16),
-//                     decoration: BoxDecoration(
-//                       border: Border.all(color: Colors.grey.shade300),
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     child: Row(
-//                       children: [
-//                         Container(
-//                           padding: const EdgeInsets.all(8),
-//                           decoration: BoxDecoration(
-//                             color: secondaryColor.withOpacity(0.1),
-//                             borderRadius: BorderRadius.circular(8),
-//                           ),
-//                           child: const Icon(
-//                             Icons.account_balance_wallet,
-//                             color: secondaryColor,
-//                           ),
-//                         ),
-//                         const SizedBox(width: 12),
-//                         Column(
-//                           crossAxisAlignment: CrossAxisAlignment.start,
-//                           children: [
-//                             const Text(
-//                               'Wallet Balance',
-//                               style: TextStyle(
-//                                 fontSize: 16,
-//                                 fontWeight: FontWeight.bold,
-//                               ),
-//                             ),
-//                             Text(
-//                               '₹1000.00',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 color: Colors.grey[600],
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const Spacer(),
-//                         Radio(
-//                           value: 'wallet',
-//                           groupValue: 'wallet',
-//                           activeColor: secondaryColor,
-//                           onChanged: (value) {},
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Container(
-//                     padding: const EdgeInsets.all(16),
-//                     decoration: BoxDecoration(
-//                       border: Border.all(color: Colors.grey.shade300),
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     child: Row(
-//                       children: [
-//                         Container(
-//                           padding: const EdgeInsets.all(8),
-//                           decoration: BoxDecoration(
-//                             color: Colors.orange.withOpacity(0.1),
-//                             borderRadius: BorderRadius.circular(8),
-//                           ),
-//                           child: const Icon(
-//                             Icons.add_card,
-//                             color: Colors.orange,
-//                           ),
-//                         ),
-//                         const SizedBox(width: 12),
-//                         const Text(
-//                           'Add Payment Method',
-//                           style: TextStyle(
-//                             fontSize: 16,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                         const Spacer(),
-//                         const Icon(
-//                           Icons.arrow_forward_ios,
-//                           size: 16,
-//                           color: Colors.grey,
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                   const SizedBox(height: 24),
-//                   SizedBox(
-//                     width: double.infinity,
-//                     child: ElevatedButton(
-//                       style: ElevatedButton.styleFrom(
-//                         primary: secondaryColor,
-//                         padding: const EdgeInsets.symmetric(vertical: 16),
-//                         shape: RoundedRectangleBorder(
-//                           borderRadius: BorderRadius.circular(12),
-//                         ),
-//                       ),
-//                       onPressed: () {
-//                         Navigator.pop(context);
-//                         _showSuccessDialog(context);
-//                       },
-//                       child: const Text(
-//                         'Confirm Subscription',
-//                         style: TextStyle(
-//                           fontSize: 16,
-//                           fontWeight: FontWeight.bold,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(height: 12),
-//                   SizedBox(
-//                     width: double.infinity,
-//                     child: TextButton(
-//                       onPressed: () {
-//                         Navigator.pop(context);
-//                       },
-//                       child: const Text(
-//                         'Cancel',
-//                         style: TextStyle(
-//                           fontSize: 16,
-//                           color: Colors.grey,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             );
-//           },
-//         );
-//       },
-//     );
-//   }
+    int totalDays = planName.toLowerCase() == 'weekly' ? 7 : 30;
+    List<DateTime> dates = [];
+    
+    for (int i = 0; i < totalDays; i++) {
+      dates.add(startDate.add(Duration(days: i)));
+    }
+    
+    return dates;
+  }
 
-//   void _showSuccessDialog(BuildContext context) {
-//     showDialog(
-//       context: context,
-//       builder: (BuildContext context) {
-//         return Dialog(
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(20),
-//           ),
-//           child: Padding(
-//             padding: const EdgeInsets.all(24.0),
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               children: [
-//                 Container(
-//                   padding: const EdgeInsets.all(16),
-//                   decoration: BoxDecoration(
-//                     color: Colors.green.shade50,
-//                     shape: BoxShape.circle,
-//                   ),
-//                   child: Icon(
-//                     Icons.check_circle,
-//                     color: Colors.green.shade600,
-//                     size: 60,
-//                   ),
-//                 ),
-//                 const SizedBox(height: 24),
-//                 const Text(
-//                   'Subscription Successful!',
-//                   style: TextStyle(
-//                     fontSize: 20,
-//                     fontWeight: FontWeight.bold,
-//                   ),
-//                 ),
-//                 const SizedBox(height: 16),
-//                 Text(
-//                   'Your subscription has been activated successfully. You will receive your first delivery tomorrow.',
-//                   textAlign: TextAlign.center,
-//                   style: TextStyle(
-//                     fontSize: 14,
-//                     color: Colors.grey[600],
-//                   ),
-//                 ),
-//                 const SizedBox(height: 24),
-//                 SizedBox(
-//                   width: double.infinity,
-//                   child: ElevatedButton(
-//                     style: ElevatedButton.styleFrom(
-//                       primary: secondaryColor,
-//                       padding: const EdgeInsets.symmetric(vertical: 16),
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                     ),
-//                     onPressed: () {
-//                       Navigator.pop(context);
-//                       Navigator.pushReplacement(
-//                         context,
-//                         MaterialPageRoute(
-//                           builder: (context) => const SubscriptionManagementPage(),
-//                         ),
-//                       );
-//                     },
-//                     child: const Text(
-//                       'View My Subscriptions',
-//                       style: TextStyle(
-//                         fontSize: 16,
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         );
-//       },
-//     );
-//   }
-// }
+  // Check if a specific day is cancelled
+  bool _isDayCancelled(DocumentSnapshot subscription, DateTime date) {
+    List<dynamic> cancelledDays = subscription['cancelledDays'] ?? [];
+    String dateString = DateFormat('yyyy-MM-dd').format(date);
+    
+    return cancelledDays.any((cancelledDate) {
+      if (cancelledDate is Timestamp) {
+        return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) == dateString;
+      } else if (cancelledDate is String) {
+        return cancelledDate == dateString;
+      }
+      return false;
+    });
+  }
 
-// class SubscriptionCard extends StatelessWidget {
-//   final String title;
-//   final String description;
-//   final double price;
-//   final String duration;
-//   final List<String> benefits;
-//   final String image;
-//   final bool isSelected;
-//   final VoidCallback onTap;
+  // Cancel delivery for a specific day for a given subscription
+  Future<void> _cancelDelivery(DocumentSnapshot subscription, DateTime date) async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Convert DateTime to a string format for consistency
+      String dateString = DateFormat('yyyy-MM-dd').format(date);
+      
+      await subscription.reference.update({
+        'cancelledDays': FieldValue.arrayUnion([dateString]),
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cancelled delivery on ${DateFormat('MMM d, yyyy').format(date)}'),
+          backgroundColor: Colors.green[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to cancel: $e'),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-//   const SubscriptionCard({
-//     Key? key,
-//     required this.title,
-//     required this.description,
-//     required this.price,
-//     required this.duration,
-//     required this.benefits,
-//     required this.image,
-//     required this.isSelected,
-//     required this.onTap,
-//   }) : super(key: key);
+  // Restore a previously cancelled delivery
+  Future<void> _restoreDelivery(DocumentSnapshot subscription, DateTime date) async {
+    setState(() => _isLoading = true);
+    
+    try {
+      String dateString = DateFormat('yyyy-MM-dd').format(date);
+      List<dynamic> cancelledDays = List<dynamic>.from(subscription['cancelledDays'] ?? []);
+      
+      // Remove the date from cancelled days
+      cancelledDays.removeWhere((cancelledDate) {
+        if (cancelledDate is Timestamp) {
+          return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) == dateString;
+        } else if (cancelledDate is String) {
+          return cancelledDate == dateString;
+        }
+        return false;
+      });
+      
+      await subscription.reference.update({
+        'cancelledDays': cancelledDays,
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Restored delivery on ${DateFormat('MMM d, yyyy').format(date)}'),
+          backgroundColor: Colors.blue[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to restore: $e'),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       onTap: onTap,
-//       child: Container(
-//         margin: const EdgeInsets.only(bottom: 16),
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(16),
-//           border: Border.all(
-//             color: isSelected ? Color.fromRGBO(22, 102, 225, 1) : Colors.transparent,
-//             width: 2,
-//           ),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(0.05),
-//               spreadRadius: 0,
-//               blurRadius: 10,
-//               offset: const Offset(0, 4),
-//             ),
-//           ],
-//         ),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             // Image section
-//             ClipRRect(
-//               borderRadius: const BorderRadius.only(
-//                 topLeft: Radius.circular(14),
-//                 topRight: Radius.circular(14),
-//               ),
-//               child: Image.asset(
-//                 image,
-//                 height: 120,
-//                 width: double.infinity,
-//                 fit: BoxFit.cover,
-//               ),
-//             ),
-//             // Content section
-//             Padding(
-//               padding: const EdgeInsets.all(16),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Row(
-//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                     children: [
-//                       Text(
-//                         title,
-//                         style: const TextStyle(
-//                           fontSize: 18,
-//                           fontWeight: FontWeight.bold,
-//                         ),
-//                       ),
-//                       Container(
-//                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-//                         decoration: BoxDecoration(
-//                           color: isSelected
-//                               ? Color.fromRGBO(22, 102, 225, 1)
-//                               : Color.fromRGBO(22, 102, 225, 0.1),
-//                           borderRadius: BorderRadius.circular(20),
-//                         ),
-//                         child: Text(
-//                           isSelected ? 'Selected' : 'Select',
-//                           style: TextStyle(
-//                             fontSize: 12,
-//                             fontWeight: FontWeight.bold,
-//                             color: isSelected ? Colors.white : Color.fromRGBO(22, 102, 225, 1),
-//                           ),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Text(
-//                     description,
-//                     style: TextStyle(
-//                       fontSize: 14,
-//                       color: Colors.grey[600],
-//                     ),
-//                   ),
-//                   const SizedBox(height: 12),
-//                   Row(
-//                     children: [
-//                       Text(
-//                         '₹${price.toStringAsFixed(2)}',
-//                         style: const TextStyle(
-//                           fontSize: 20,
-//                           fontWeight: FontWeight.bold,
-//                           color: Color.fromRGBO(22, 102, 225, 1),
-//                         ),
-//                       ),
-//                       Text(
-//                         ' / $duration',
-//                         style: TextStyle(
-//                           fontSize: 14,
-//                           color: Colors.grey[600],
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                   const SizedBox(height: 16),
-//                   const Text(
-//                     'Benefits:',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Column(
-//                     children: benefits
-//                         .take(2)
-//                         .map(
-//                           (benefit) => Padding(
-//                             padding: const EdgeInsets.only(bottom: 6),
-//                             child: Row(
-//                               children: [
-//                                 const Icon(
-//                                   Icons.check_circle,
-//                                   color: Color.fromRGBO(22, 102, 225, 1),
-//                                   size: 16,
-//                                 ),
-//                                 const SizedBox(width: 8),
-//                                 Expanded(
-//                                   child: Text(
-//                                     benefit,
-//                                     style: const TextStyle(
-//                                       fontSize: 14,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         )
-//                         .toList(),
-//                   ),
-//                   if (benefits.length > 2)
-//                     Text(
-//                       '+ ${benefits.length - 2} more benefits',
-//                       style: TextStyle(
-//                         fontSize: 14,
-//                         color: Color.fromRGBO(22, 102, 225, 1),
-//                         fontWeight: FontWeight.w500,
-//                       ),
-//                     ),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    if (_currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('My Subscriptions'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 60, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'Please log in to view subscriptions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                icon: Icon(Icons.login),
+                label: Text('Go to Login'),
+                onPressed: () {
+                  // Navigate to login page
+                  Navigator.of(context).pushReplacementNamed('/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-// class SubscriptionManagementPage extends StatefulWidget {
-//   const SubscriptionManagementPage({Key? key}) : super(key: key);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('My Subscriptions'),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('users')
+                .doc(_currentUser!.uid)
+                .collection('product_subscriptions')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
+                      SizedBox(height: 16),
+                      Text(
+                        'Error fetching subscriptions',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: 8),
+                      Text(snapshot.error.toString()),
+                    ],
+                  ),
+                );
+              }
+              
+              if (!snapshot.hasData) {
+                return Center(child: CircularProgressIndicator());
+              }
+              
+              final subscriptions = snapshot.data!.docs;
+              
+              if (subscriptions.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.subscriptions_outlined, size: 60, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No active subscriptions found',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.shopping_cart),
+                        label: Text('Browse Products'),
+                        onPressed: () {
+                          // Navigate to products page
+                          Navigator.of(context).pushReplacementNamed('/products');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              return ListView.builder(
+                padding: EdgeInsets.all(12),
+                itemCount: subscriptions.length,
+                itemBuilder: (context, index) {
+                  final subscription = subscriptions[index];
+                  final productName = subscription['productName'] ?? 'Product';
+                  final planName = subscription['planName'] ?? 'Subscription';
+                  final endDate = subscription['endDate']?.toDate() ?? DateTime.now().add(Duration(days: 30));
+                  final deliveryDates = _getDeliveryDates(subscription);
+                  
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 16),
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Subscription header
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              topRight: Radius.circular(16),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                child: Icon(
+                                  Icons.shopping_basket,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      productName,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '$planName Plan • Ends ${DateFormat('MMM d, yyyy').format(endDate)}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.info_outline),
+                                onPressed: () {
+                                  // Show subscription details
+                                  showModalBottomSheet(
+                                    context: context,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                    ),
+                                    builder: (context) => Padding(
+                                      padding: EdgeInsets.all(20),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Subscription Details',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(height: 20),
+                                          _detailRow('Product', productName),
+                                          _detailRow('Plan', planName),
+                                          _detailRow('End Date', DateFormat('MMMM d, yyyy').format(endDate)),
+                                          _detailRow('Status', 'Active'),
+                                          SizedBox(height: 20),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text('Close'),
+                                              style: ElevatedButton.styleFrom(
+                                                padding: EdgeInsets.symmetric(vertical: 12),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Delivery calendar section
+                        Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Upcoming Deliveries',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: deliveryDates.map((date) {
+                                    bool isCancelled = _isDayCancelled(subscription, date);
+                                    bool isPast = date.isBefore(DateTime.now().subtract(Duration(days: 1)));
+                                    bool isToday = DateFormat('yyyyMMdd').format(date) == 
+                                                  DateFormat('yyyyMMdd').format(DateTime.now());
+                                    
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Colors.grey[300]!,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        color: isToday ? Colors.yellow[50] : null,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: isCancelled 
+                                                    ? Colors.red[100]
+                                                    : isPast 
+                                                        ? Colors.grey[200]
+                                                        : isToday 
+                                                            ? Colors.amber[100]
+                                                            : Colors.green[100],
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  '${date.day}',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isCancelled 
+                                                        ? Colors.red[800]
+                                                        : isPast 
+                                                            ? Colors.grey[600]
+                                                            : isToday 
+                                                                ? Colors.amber[800]
+                                                                : Colors.green[800],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    DateFormat('EEEE, MMMM d').format(date),
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w500,
+                                                      color: isPast ? Colors.grey : Colors.black87,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 2),
+                                                  Text(
+                                                    isCancelled
+                                                        ? 'Delivery Cancelled'
+                                                        : isPast
+                                                            ? 'Delivered'
+                                                            : isToday
+                                                                ? 'Today\'s Delivery'
+                                                                : 'Scheduled Delivery',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isCancelled
+                                                          ? Colors.red
+                                                          : isPast
+                                                              ? Colors.grey[600]
+                                                              : isToday
+                                                                  ? Colors.amber[800]
+                                                                  : Colors.green[700],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(width: 8),
+                                            if (!isPast) // Only show action buttons for non-past dates
+                                              isCancelled
+                                                  ? OutlinedButton.icon(
+                                                      icon: Icon(Icons.restore, size: 18),
+                                                      label: Text('Restore'),
+                                                      onPressed: _isLoading
+                                                          ? null
+                                                          : () => _restoreDelivery(subscription, date),
+                                                      style: OutlinedButton.styleFrom(
+                                                        foregroundColor: Colors.blue[700],
+                                                        side: BorderSide(color: Colors.blue[700]!),
+                                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      ),
+                                                    )
+                                                  : ElevatedButton.icon(
+                                                      icon: Icon(Icons.cancel_outlined, size: 18),
+                                                      label: Text('Cancel'),
+                                                      onPressed: _isLoading
+                                                          ? null
+                                                          : () => _cancelDelivery(subscription, date),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.red[50],
+                                                        foregroundColor: Colors.red[700],
+                                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      ),
+                                                    ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Subscription footer
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                icon: Icon(Icons.chat_outlined),
+                                label: Text('Support'),
+                                onPressed: () {
+                                  // Open support chat or contact page
+                                },
+                              ),
+                              SizedBox(width: 8),
+                              TextButton.icon(
+                                icon: Icon(Icons.payment),
+                                label: Text('Billing'),
+                                onPressed: () {
+                                  // Open billing details
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-//   @override
-//   _SubscriptionManagementPageState createState() => _SubscriptionManagementPageState();
-// }
-
-// class _SubscriptionManagementPageState extends State<SubscriptionManagementPage> {
-//   // Color palette
-//   static const Color primaryColor = Color(0xFFFAFAFA);
-//   static const Color secondaryColor = Color.fromRGBO(22, 102, 225, 1);
-//   static const Color backgroundColor = Color(0xFFFAFAFA);
-//   static const Color accentColor = Color.fromRGBO(22, 102, 225, 1);
-
-//   // Sample active subscription
-//   final Map<String, dynamic> activeSubscription = {
-//     'title': 'Weekly Plan',
-//     'nextDelivery': '2025-03-14',
-//     'items': ['Milk (1L)', 'Yogurt (500g)', 'Butter (200g)'],
-//     'price': 149.99,
-//     'status': 'Active',
-//     'image': 'images/weekly.png',
-//     'canCancel': true,
-//   };
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: backgroundColor,
-//       appBar: AppBar(
-//         backgroundColor: primaryColor,
-//         elevation: 0,
-//         title: const Text(
-//           'My Subscriptions',
-//           style: TextStyle(
-//             color: secondaryColor,
-//             fontWeight: FontWeight.bold,
-//           ),
-//         ),
-//         iconTheme: const IconThemeData(color: secondaryColor),
-//       ),
-//       body: SingleChildScrollView(
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.all(16.0),
-//               child: Row(
-//                 children: [
-//                   Container(
-//                     padding: const EdgeInsets.all(8),
-//                     decoration: BoxDecoration(
-//                       color: secondaryColor.withOpacity(0.1),
-//                       borderRadius: BorderRadius.circular(8),
-//                     ),
-//                     child: const Icon(
-//                       Icons.calendar_today,
-//                       color: secondaryColor,
-//                     ),
-//                   ),
-//                   const SizedBox(width: 12),
-//                   Column(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     children: [
-//                       const Text(
-//                         'Active Subscription',
-//                         style: TextStyle(
-//                           fontSize: 18,
-//                           fontWeight: FontWeight.bold,
-//                           color: Colors.black87,
-//                         ),
-//                       ),
-//                       Text(
-//                         'Manage your current subscriptions',
-//                         style: TextStyle(
-//                           fontSize: 14,
-//                           color: Colors.black54,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             Padding(
-//               padding: const EdgeInsets.all(16.0),
-//               child: Card(
-//                 shape: RoundedRectangleBorder(
-//                   borderRadius: BorderRadius.circular(16),
-//                 ),
-//                 elevation: 4,
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Container(
-//                       padding: const EdgeInsets.all(16),
-//                       decoration: BoxDecoration(
-//                         color: secondaryColor,
-//                         borderRadius: const BorderRadius.only(
-//                           topLeft: Radius.circular(16),
-//                           topRight: Radius.circular(16),
-//                         ),
-//                       ),
-//                       child: Row(
-//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                         children: [
-//                           const Text(
-//                             'Weekly Plan',
-//                             style: TextStyle(
-//                               fontSize: 18,
-//                               fontWeight: FontWeight.bold,
-//                               color: Colors.white,
-//                             ),
-//                           ),
-//                           Container(
-//                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-//                             decoration: BoxDecoration(
-//                               color: Colors.white,
-//                               borderRadius: BorderRadius.circular(12),
-//                             ),
-//                             child: const Text(
-//                               'Active',
-//                               style: TextStyle(
-//                                 fontSize: 12,
-//                                 fontWeight: FontWeight.bold,
-//                                 color: secondaryColor,
-//                               ),
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                     Padding(
-//                       padding: const EdgeInsets.all(16),
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           Row(
-//                             children: [
-//                               const Icon(
-//                                 Icons.timer,
-//                                 size: 18,
-//                                 color: Colors.grey,
-//                               ),
-//                               const SizedBox(width: 8),
-//                               const Text(
-//                                 'Next Delivery Date',
-//                                 style: TextStyle(
-//                                   fontSize: 14,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                               const Spacer(),
-//                               Text(
-//                                 '25th Dec, 2023',
-//                                 style: const TextStyle(
-//                                   fontSize: 14,
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                           const SizedBox(height: 8),
-//                           Row(
-//                             children: [
-//                               const Icon(
-//                                 Icons.location_on,
-//                                 size: 18,
-//                                 color: Colors.grey,
-//                               ),
-//                               const SizedBox(width: 8),
-//                               const Text(
-//                                 'Delivery Address',
-//                                 style: TextStyle(
-//                                   fontSize: 14,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                               const Spacer(),
-//                               Text(
-//                                 '123 Main St, City, Country',
-//                                 style: const TextStyle(
-//                                   fontSize: 14,
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                           const SizedBox(height: 8),
-//                           Row(
-//                             children: [
-//                               const Icon(
-//                                 Icons.payment,
-//                                 size: 18,
-//                                 color: Colors.grey,
-//                               ),
-//                               const SizedBox(width: 8),
-//                               const Text(
-//                                 'Payment Method',
-//                                 style: TextStyle(
-//                                   fontSize: 14,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                               const Spacer(),
-//                               Text(
-//                                 'Credit Card',
-//                                 style: const TextStyle(
-//                                   fontSize: 14,
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                     const SizedBox(height: 24),
-//                     const Text(
-//                       'Order Summary',
-//                       style: TextStyle(
-//                         fontSize: 18,
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 12),
-//                     Container(
-//                       padding: const EdgeInsets.all(16),
-//                       decoration: BoxDecoration(
-//                         border: Border.all(color: Colors.grey.shade300),
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           Row(
-//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                             children: [
-//                               const Text(
-//                                 'Subtotal',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   fontWeight: FontWeight.bold,
-//                                 ),
-//                               ),
-//                               Text(
-//                                 '₹900.00',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                           const SizedBox(height: 8),
-//                           Row(
-//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                             children: [
-//                               const Text(
-//                                 'Tax',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   fontWeight: FontWeight.bold,
-//                                 ),
-//                               ),
-//                               Text(
-//                                 '₹100.00',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                           const SizedBox(height: 8),
-//                           Row(
-//                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                             children: [
-//                               const Text(
-//                                 'Total',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   fontWeight: FontWeight.bold,
-//                                 ),
-//                               ),
-//                               Text(
-//                                 '₹1000.00',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   color: Colors.grey[600],
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+  // Helper method to create detail rows in the subscription info modal
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
