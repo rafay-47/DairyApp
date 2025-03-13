@@ -204,11 +204,13 @@ class RegisterState extends State<RegisterPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) {
-                    return HomePage(onSignedOut: () {
-                      setState(() {
-                        widget.onSignedIn();
-                      });
-                    });
+                    return HomePage(
+                      onSignedOut: () {
+                        setState(() {
+                          widget.onSignedIn();
+                        });
+                      },
+                    );
                   },
                 ),
               );

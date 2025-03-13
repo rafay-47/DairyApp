@@ -46,11 +46,11 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
   Future<void> _checkPinCode() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPinCode = prefs.getString('user_pin_code');
-    
+
     setState(() {
       userPinCode = savedPinCode;
       isLocationVerified = savedPinCode != null;
-      
+
       if (isLocationVerified) {
         screens[0] = CategoriesList(pinCode: userPinCode);
         if (currentTab == 0) {
@@ -64,60 +64,73 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
 
   void _showPinCodeDialog() {
     final TextEditingController pinController = TextEditingController();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: Text('Enter Your PIN Code'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Please enter your PIN code to see products available in your area.'),
-              SizedBox(height: 16),
-              TextField(
-                controller: pinController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'PIN Code',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+        builder:
+            (context) => AlertDialog(
+              title: Text('Enter Your PIN Code'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Please enter your PIN code to see products available in your area.',
                   ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: pinController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    decoration: InputDecoration(
+                      labelText: 'PIN Code',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                if (pinController.text.length == 6) {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('user_pin_code', pinController.text);
-                  
-                  setState(() {
-                    userPinCode = pinController.text;
-                    isLocationVerified = true;
-                    screens[0] = CategoriesList(pinCode: userPinCode);
-                    if (currentTab == 0) {
-                      currentScreen = screens[0];
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    if (pinController.text.length == 6) {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString(
+                        'user_pin_code',
+                        pinController.text,
+                      );
+
+                      setState(() {
+                        userPinCode = pinController.text;
+                        isLocationVerified = true;
+                        screens[0] = CategoriesList(pinCode: userPinCode);
+                        if (currentTab == 0) {
+                          currentScreen = screens[0];
+                        }
+                      });
+
+                      Navigator.of(context).pop();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Please enter a valid 6-digit PIN code',
+                          ),
+                        ),
+                      );
                     }
-                  });
-                  
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Please enter a valid 6-digit PIN code')),
-                  );
-                }
-              },
-              child: Text('CONFIRM', style: TextStyle(color: Constants.accentColor)),
+                  },
+                  child: Text(
+                    'CONFIRM',
+                    style: TextStyle(color: Constants.accentColor),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     });
   }
@@ -180,9 +193,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
               right: 0,
               top: 0,
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('cart')
-                    .snapshots(),
+                stream:
+                    FirebaseFirestore.instance.collection('cart').snapshots(),
                 builder: (context, snapshot) {
                   int count = 0;
                   if (snapshot.hasData && snapshot.data != null) {
@@ -190,24 +202,21 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
                   }
                   return count > 0
                       ? Container(
-                          padding: EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            count.toString(),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
+                        padding: EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          count.toString(),
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
                       : Container();
                 },
               ),
@@ -347,8 +356,7 @@ class CategoriesList extends StatelessWidget {
       );
     }
 
-    Query categoriesQuery = FirebaseFirestore.instance
-        .collection('categories');
+    Query categoriesQuery = FirebaseFirestore.instance.collection('categories');
     print(categoriesQuery.snapshots().first);
     // Add location filtering if needed
     // if (pinCode != null) {
@@ -376,10 +384,7 @@ class CategoriesList extends StatelessWidget {
                     SizedBox(height: 4),
                     Text(
                       "Products available for delivery to PIN: $pinCode",
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     SizedBox(height: 8),
                     _buildFeaturedProducts(),
@@ -412,16 +417,13 @@ class CategoriesList extends StatelessWidget {
                     SizedBox(height: 16),
                     Text(
                       'No categories available in your area',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey[700],
-                      ),
+                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
                     ),
                     SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
                         // Show PIN code dialog
-                        final HomeState? homeState = 
+                        final HomeState? homeState =
                             context.findAncestorStateOfType<HomeState>();
                         if (homeState != null) {
                           homeState._showPinCodeDialog();
@@ -431,7 +433,10 @@ class CategoriesList extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Constants.accentColor,
                         foregroundColor: Constants.primaryColor,
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -457,10 +462,9 @@ class CategoriesList extends StatelessWidget {
                       categories[index].data() as Map<String, dynamic>;
                   final categoryName =
                       categoryData['name'] ?? 'Unnamed Category';
-                  final categoryDescription =
-                      categoryData['description'] ?? '';
+                  final categoryDescription = categoryData['description'] ?? '';
                   final imageUrl = categoryData['imageUrl'] ?? '';
-                  
+
                   return Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(
@@ -472,10 +476,11 @@ class CategoriesList extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ProductsByCategoryPage(
-                              category: categoryName,
-                              pinCode: pinCode,
-                            ),
+                            builder:
+                                (context) => ProductsByCategoryPage(
+                                  category: categoryName,
+                                  pinCode: pinCode,
+                                ),
                           ),
                         );
                       },
@@ -484,19 +489,17 @@ class CategoriesList extends StatelessWidget {
                         children: [
                           Expanded(
                             flex: 3,
-                            child: imageUrl.isNotEmpty
-                                ? Image.network(
-                                    imageUrl,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    color: Colors.grey[200],
-                                    child: Icon(
-                                      Icons.category,
-                                      size: 40,
-                                      color: Colors.grey[400],
+                            child:
+                                imageUrl.isNotEmpty
+                                    ? Image.network(imageUrl, fit: BoxFit.cover)
+                                    : Container(
+                                      color: Colors.grey[200],
+                                      child: Icon(
+                                        Icons.category,
+                                        size: 40,
+                                        color: Colors.grey[400],
+                                      ),
                                     ),
-                                  ),
                           ),
                           Expanded(
                             flex: 2,
@@ -541,21 +544,21 @@ class CategoriesList extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildFeaturedProducts() {
     return Container(
       height: 180,
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('products')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('products').snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              snapshot.data!.docs.isEmpty) {
             return Container(); // No featured products
           }
-          
+
           final products = snapshot.data!.docs;
-          
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -563,10 +566,7 @@ class CategoriesList extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(
                   "Featured Products",
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
                 ),
               ),
               Expanded(
@@ -574,13 +574,16 @@ class CategoriesList extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   itemCount: products.length,
                   itemBuilder: (context, index) {
-                    final productData = products[index].data() as Map<String, dynamic>;
-                    final productName = productData['name'] ?? 'Unnamed Product';
-                    final productPrice = productData['price'] != null
-                        ? productData['price'].toString()
-                        : 'N/A';
+                    final productData =
+                        products[index].data() as Map<String, dynamic>;
+                    final productName =
+                        productData['name'] ?? 'Unnamed Product';
+                    final productPrice =
+                        productData['price'] != null
+                            ? productData['price'].toString()
+                            : 'N/A';
                     final imageUrl = productData['imageUrl'] ?? '';
-                    
+
                     return Container(
                       width: 140,
                       margin: EdgeInsets.only(right: 12),
@@ -598,21 +601,22 @@ class CategoriesList extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: imageUrl.isNotEmpty
-                                    ? Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      )
-                                    : Container(
-                                        color: Colors.grey[200],
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.image,
-                                            color: Colors.grey[400],
+                                child:
+                                    imageUrl.isNotEmpty
+                                        ? Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                        )
+                                        : Container(
+                                          color: Colors.grey[200],
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.image,
+                                              color: Colors.grey[400],
+                                            ),
                                           ),
                                         ),
-                                      ),
                               ),
                               Padding(
                                 padding: const EdgeInsets.all(8.0),
@@ -661,14 +665,14 @@ class ProductsByCategoryPage extends StatelessWidget {
   final String? pinCode;
 
   const ProductsByCategoryPage({Key? key, required this.category, this.pinCode})
-      : super(key: key);
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     Query productsQuery = FirebaseFirestore.instance
         .collection('products')
         .where('category', isEqualTo: category);
-    
+
     // Add location filtering if needed
     if (pinCode != null) {
       productsQuery = productsQuery.where('pinCode', isEqualTo: pinCode);
@@ -676,10 +680,7 @@ class ProductsByCategoryPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          category,
-          style: TextStyle(color: Constants.primaryColor),
-        ),
+        title: Text(category, style: TextStyle(color: Constants.primaryColor)),
         backgroundColor: Constants.accentColor,
         actions: [
           IconButton(
@@ -706,7 +707,11 @@ class ProductsByCategoryPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[400]),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
                   SizedBox(height: 16),
                   Text(
                     'No products found in this category',
@@ -740,17 +745,18 @@ class ProductsByCategoryPage extends StatelessWidget {
                       value: 'Popularity',
                       underline: Container(),
                       icon: Icon(Icons.keyboard_arrow_down),
-                      items: <String>[
-                        'Popularity',
-                        'Price: Low to High',
-                        'Price: High to Low',
-                        'Newest First'
-                      ].map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
+                      items:
+                          <String>[
+                            'Popularity',
+                            'Price: Low to High',
+                            'Price: High to Low',
+                            'Newest First',
+                          ].map<DropdownMenuItem<String>>((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
                       onChanged: (String? newValue) {
                         // Handle sorting
                       },
@@ -772,14 +778,16 @@ class ProductsByCategoryPage extends StatelessWidget {
                     final productData =
                         products[index].data() as Map<String, dynamic>;
                     final productId = products[index].id;
-                    final productName = productData['name'] ?? 'Unnamed Product';
-                    final productPrice = productData['price'] != null
-                        ? productData['price'].toString()
-                        : 'N/A';
+                    final productName =
+                        productData['name'] ?? 'Unnamed Product';
+                    final productPrice =
+                        productData['price'] != null
+                            ? productData['price'].toString()
+                            : 'N/A';
                     final imageUrl = productData['imageUrl'] ?? '';
                     final description = productData['description'] ?? '';
                     final unit = productData['unit'] ?? '';
-                    
+
                     return Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(
@@ -799,19 +807,20 @@ class ProductsByCategoryPage extends StatelessWidget {
                                 children: [
                                   Container(
                                     width: double.infinity,
-                                    child: imageUrl.isNotEmpty
-                                        ? Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                          )
-                                        : Container(
-                                            color: Colors.grey[200],
-                                            child: Icon(
-                                              Icons.image,
-                                              size: 40,
-                                              color: Colors.grey[400],
+                                    child:
+                                        imageUrl.isNotEmpty
+                                            ? Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.cover,
+                                            )
+                                            : Container(
+                                              color: Colors.grey[200],
+                                              child: Icon(
+                                                Icons.image,
+                                                size: 40,
+                                                color: Colors.grey[400],
+                                              ),
                                             ),
-                                          ),
                                   ),
                                   Positioned(
                                     top: 8,
@@ -850,7 +859,9 @@ class ProductsByCategoryPage extends StatelessWidget {
                                     ),
                                     if (description.isNotEmpty)
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4.0,
+                                        ),
                                         child: Text(
                                           description,
                                           style: TextStyle(
@@ -863,7 +874,8 @@ class ProductsByCategoryPage extends StatelessWidget {
                                       ),
                                     Spacer(),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           '₹$productPrice${unit.isNotEmpty ? '/$unit' : ''}',
@@ -876,7 +888,12 @@ class ProductsByCategoryPage extends StatelessWidget {
                                         InkWell(
                                           onTap: () {
                                             // Add to cart
-                                            _addToCart(context, productId, productName, productData);
+                                            _addToCart(
+                                              context,
+                                              productId,
+                                              productName,
+                                              productData,
+                                            );
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(6),
@@ -910,7 +927,7 @@ class ProductsByCategoryPage extends StatelessWidget {
       ),
     );
   }
-  
+
   void _showFilterDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -929,10 +946,7 @@ class ProductsByCategoryPage extends StatelessWidget {
                 children: [
                   Text(
                     'Filter Products',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     icon: Icon(Icons.close),
@@ -943,10 +957,7 @@ class ProductsByCategoryPage extends StatelessWidget {
               Divider(),
               Text(
                 'Price Range',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
               RangeSlider(
@@ -961,10 +972,7 @@ class ProductsByCategoryPage extends StatelessWidget {
               SizedBox(height: 16),
               Text(
                 'Availability',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               CheckboxListTile(
                 title: Text('In Stock'),
@@ -983,7 +991,10 @@ class ProductsByCategoryPage extends StatelessWidget {
                     },
                     child: Text('Reset'),
                     style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                   ElevatedButton(
@@ -995,7 +1006,10 @@ class ProductsByCategoryPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Constants.accentColor,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -1006,39 +1020,49 @@ class ProductsByCategoryPage extends StatelessWidget {
       },
     );
   }
-  
-  void _addToCart(BuildContext context, String productId, String productName, Map<String, dynamic> productData) {
-    FirebaseFirestore.instance.collection('cart').doc(productId).set({
-      'productId': productId,
-      'name': productName,
-      'price': productData['price'],
-      'quantity': 1,
-      'imageUrl': productData['imageUrl'] ?? '',
-      'category': category,
-      'addedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true)).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$productName added to cart'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-          action: SnackBarAction(
-            label: 'VIEW CART',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Cart()),
-              );
-            },
-          ),
-        ),
-      );
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add to cart: $error')),
-      );
-    });
+
+  void _addToCart(
+    BuildContext context,
+    String productId,
+    String productName,
+    Map<String, dynamic> productData,
+  ) {
+    FirebaseFirestore.instance
+        .collection('cart')
+        .doc(productId)
+        .set({
+          'productId': productId,
+          'name': productName,
+          'price': productData['price'],
+          'quantity': 1,
+          'imageUrl': productData['imageUrl'] ?? '',
+          'category': category,
+          'addedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true))
+        .then((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$productName added to cart'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+              action: SnackBarAction(
+                label: 'VIEW CART',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Cart()),
+                  );
+                },
+              ),
+            ),
+          );
+        })
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add to cart: $error')),
+          );
+        });
   }
 }
 
@@ -1057,10 +1081,7 @@ class _CartState extends State<Cart> {
       backgroundColor: Constants.backgroundColor,
       appBar: AppBar(
         backgroundColor: Constants.accentColor,
-        title: Text(
-          'My Cart',
-          style: TextStyle(color: Constants.primaryColor),
-        ),
+        title: Text('My Cart', style: TextStyle(color: Constants.primaryColor)),
         actions: [
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('cart').snapshots(),
@@ -1091,15 +1112,18 @@ class _CartState extends State<Cart> {
           if (cartItems.isEmpty) {
             return _buildEmptyCart();
           }
-          
+
           double totalAmount = 0;
           for (var item in cartItems) {
             final data = item.data() as Map<String, dynamic>;
-            final price = data['price'] != null ? double.parse(data['price'].toString()) : 0.0;
+            final price =
+                data['price'] != null
+                    ? double.parse(data['price'].toString())
+                    : 0.0;
             final quantity = data['quantity'] ?? 1;
             totalAmount += price * quantity;
           }
-          
+
           return Column(
             children: [
               Expanded(
@@ -1111,10 +1135,13 @@ class _CartState extends State<Cart> {
                     final data = item.data() as Map<String, dynamic>;
                     final productId = item.id;
                     final name = data['name'] ?? 'Unnamed Product';
-                    final price = data['price'] != null ? data['price'].toString() : 'N/A';
+                    final price =
+                        data['price'] != null
+                            ? data['price'].toString()
+                            : 'N/A';
                     final quantity = data['quantity'] ?? 1;
                     final imageUrl = data['imageUrl'] ?? '';
-                    
+
                     return Card(
                       margin: EdgeInsets.only(bottom: 16),
                       shape: RoundedRectangleBorder(
@@ -1131,19 +1158,20 @@ class _CartState extends State<Cart> {
                               child: Container(
                                 width: 80,
                                 height: 80,
-                                child: imageUrl.isNotEmpty
-                                    ? Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Container(
-                                        color: Colors.grey[200],
-                                        child: Icon(
-                                          Icons.image,
-                                          color: Colors.grey[400],
-                                          size: 30,
+                                child:
+                                    imageUrl.isNotEmpty
+                                        ? Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                        )
+                                        : Container(
+                                          color: Colors.grey[200],
+                                          child: Icon(
+                                            Icons.image,
+                                            color: Colors.grey[400],
+                                            size: 30,
+                                          ),
                                         ),
-                                      ),
                               ),
                             ),
                             SizedBox(width: 16),
@@ -1173,23 +1201,37 @@ class _CartState extends State<Cart> {
                                     children: [
                                       InkWell(
                                         onTap: () {
-                                          _updateQuantity(productId, quantity - 1);
+                                          _updateQuantity(
+                                            productId,
+                                            quantity - 1,
+                                          );
                                         },
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
                                             color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Icon(Icons.remove, size: 16),
                                         ),
                                       ),
                                       Container(
-                                        margin: EdgeInsets.symmetric(horizontal: 8),
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        margin: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.grey[300]!),
-                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: Colors.grey[300]!,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: Text(
                                           quantity.toString(),
@@ -1200,13 +1242,18 @@ class _CartState extends State<Cart> {
                                       ),
                                       InkWell(
                                         onTap: () {
-                                          _updateQuantity(productId, quantity + 1);
+                                          _updateQuantity(
+                                            productId,
+                                            quantity + 1,
+                                          );
                                         },
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
                                             color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           child: Icon(Icons.add, size: 16),
                                         ),
@@ -1246,9 +1293,7 @@ class _CartState extends State<Cart> {
                       offset: Offset(0, -5),
                     ),
                   ],
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Column(
                   children: [
@@ -1258,15 +1303,11 @@ class _CartState extends State<Cart> {
                       children: [
                         Text(
                           'Items (${cartItems.length})',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                         Text(
                           '₹${totalAmount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -1276,9 +1317,7 @@ class _CartState extends State<Cart> {
                       children: [
                         Text(
                           'Delivery',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                         Text(
                           totalAmount >= 500 ? 'FREE' : '₹40.00',
@@ -1315,9 +1354,12 @@ class _CartState extends State<Cart> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: isLoading ? null : () {
-                          _proceedToCheckout();
-                        },
+                        onPressed:
+                            isLoading
+                                ? null
+                                : () {
+                                  _proceedToCheckout();
+                                },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Constants.accentColor,
                           foregroundColor: Colors.white,
@@ -1326,15 +1368,16 @@ class _CartState extends State<Cart> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: isLoading
-                            ? CircularProgressIndicator(color: Colors.white)
-                            : Text(
-                                'PROCEED TO CHECKOUT',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                        child:
+                            isLoading
+                                ? CircularProgressIndicator(color: Colors.white)
+                                : Text(
+                                  'PROCEED TO CHECKOUT',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
                       ),
                     ),
                   ],
@@ -1346,7 +1389,7 @@ class _CartState extends State<Cart> {
       ),
     );
   }
-  
+
   Widget _buildEmptyCart() {
     return Center(
       child: Column(
@@ -1370,10 +1413,7 @@ class _CartState extends State<Cart> {
           Text(
             'Looks like you haven\'t added\nanything to your cart yet',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           SizedBox(height: 32),
           ElevatedButton.icon(
@@ -1401,112 +1441,122 @@ class _CartState extends State<Cart> {
       _removeFromCart(productId);
       return;
     }
-    
-    FirebaseFirestore.instance.collection('cart').doc(productId).update({
-      'quantity': newQuantity,
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update quantity: $error')),
-      );
-    });
+
+    FirebaseFirestore.instance
+        .collection('cart')
+        .doc(productId)
+        .update({'quantity': newQuantity})
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update quantity: $error')),
+          );
+        });
   }
 
   void _removeFromCart(String productId) {
-    FirebaseFirestore.instance.collection('cart').doc(productId).delete().catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to remove item: $error')),
-      );
-    });
+    FirebaseFirestore.instance
+        .collection('cart')
+        .doc(productId)
+        .delete()
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to remove item: $error')),
+          );
+        });
   }
 
   void _showClearCartDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Clear Cart'),
-        content: Text('Are you sure you want to remove all items from your cart?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('CANCEL'),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Clear Cart'),
+            content: Text(
+              'Are you sure you want to remove all items from your cart?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _clearCart();
+                },
+                child: Text('YES, CLEAR', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _clearCart();
-            },
-            child: Text('YES, CLEAR', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 
   void _clearCart() {
-    FirebaseFirestore.instance.collection('cart').get().then((snapshot) {
-      for (DocumentSnapshot doc in snapshot.docs) {
-        doc.reference.delete();
-      }
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to clear cart: $error')),
-      );
-    });
+    FirebaseFirestore.instance
+        .collection('cart')
+        .get()
+        .then((snapshot) {
+          for (DocumentSnapshot doc in snapshot.docs) {
+            doc.reference.delete();
+          }
+        })
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to clear cart: $error')),
+          );
+        });
   }
 
   void _proceedToCheckout() {
     setState(() {
       isLoading = true;
     });
-    
+
     // Simulate checkout process
     Future.delayed(Duration(seconds: 2), () {
       setState(() {
         isLoading = false;
       });
-      
+
       // Show order confirmation
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Order Placed Successfully'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 60,
+        builder:
+            (context) => AlertDialog(
+              title: Text('Order Placed Successfully'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 60),
+                  SizedBox(height: 16),
+                  Text(
+                    'Your order has been placed successfully!',
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'You can track your order in the Orders section.',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'Your order has been placed successfully!',
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'You can track your order in the Orders section.',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Clear cart after successful order
+                    _clearCart();
+                    // Navigate back to home
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'OK',
+                    style: TextStyle(color: Constants.accentColor),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Clear cart after successful order
-                _clearCart();
-                // Navigate back to home
-                Navigator.of(context).pop();
-              },
-              child: Text('OK', style: TextStyle(color: Constants.accentColor)),
+              ],
             ),
-          ],
-        ),
       );
     });
   }
@@ -1525,10 +1575,11 @@ class OrderHistoryPage extends StatelessWidget {
         backgroundColor: Constants.accentColor,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('orders')
-            .orderBy('orderedAt', descending: true)
-            .snapshots(),
+        stream:
+            FirebaseFirestore.instance
+                .collection('orders')
+                .orderBy('orderedAt', descending: true)
+                .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error loading orders'));
@@ -1559,27 +1610,26 @@ class OrderHistoryPage extends StatelessWidget {
                   SizedBox(height: 8),
                   Text(
                     'Your order history will appear here',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
               ),
             );
           }
-          
+
           return ListView.builder(
             padding: EdgeInsets.all(16),
             itemCount: orders.length,
             itemBuilder: (context, index) {
               final orderData = orders[index].data() as Map<String, dynamic>;
               final orderId = orders[index].id;
-              final orderDate = orderData['orderedAt'] != null
-                  ? (orderData['orderedAt'] as Timestamp).toDate()
-                  : DateTime.now();
+              final orderDate =
+                  orderData['orderedAt'] != null
+                      ? (orderData['orderedAt'] as Timestamp).toDate()
+                      : DateTime.now();
               final totalAmount = orderData['totalAmount'] ?? 0.0;
               final status = orderData['status'] ?? 'Processing';
-              
+
               return Card(
                 margin: EdgeInsets.only(bottom: 16),
                 shape: RoundedRectangleBorder(
@@ -1628,9 +1678,7 @@ class OrderHistoryPage extends StatelessWidget {
                         SizedBox(height: 8),
                         Text(
                           'Date: ${_formatDate(orderDate)}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                         Divider(height: 24),
                         Row(
@@ -1638,9 +1686,7 @@ class OrderHistoryPage extends StatelessWidget {
                           children: [
                             Text(
                               'Total Amount:',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                              ),
+                              style: TextStyle(color: Colors.grey[700]),
                             ),
                             Text(
                               '₹${totalAmount.toStringAsFixed(2)}',
@@ -1696,7 +1742,7 @@ class OrderHistoryPage extends StatelessWidget {
       ),
     );
   }
-  
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'processing':
@@ -1711,7 +1757,7 @@ class OrderHistoryPage extends StatelessWidget {
         return Colors.grey;
     }
   }
-  
+
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }

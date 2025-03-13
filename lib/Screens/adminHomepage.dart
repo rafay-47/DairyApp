@@ -1,10 +1,12 @@
 import 'package:dairyapp/Screens/CategoriesManagement.dart';
 import 'package:dairyapp/Screens/productManagement.dart';
+import 'package:dairyapp/main.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // App theme colors
 class AppColors {
@@ -21,8 +23,8 @@ class AppColors {
 }
 
 class AdminHomePage extends StatefulWidget {
-  const AdminHomePage({Key? key, required Null Function() onSignedOut})
-    : super(key: key);
+  final VoidCallback onSignedOut;
+  const AdminHomePage({Key? key, required this.onSignedOut}) : super(key: key);
 
   @override
   _AdminHomePageState createState() => _AdminHomePageState();
@@ -65,6 +67,23 @@ class _AdminHomePageState extends State<AdminHomePage> {
     });
 
     try {
+      // First verify the user is still authenticated and is an admin
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        // If user is not logged in, sign out
+        widget.onSignedOut();
+        return;
+      }
+
+      // Verify admin status (optional additional check)
+      final userDoc =
+          await _firestore.collection('users').doc(currentUser.uid).get();
+      if (!userDoc.exists || userDoc.data()?['isAdmin'] != true) {
+        // If not admin anymore, sign out
+        widget.onSignedOut();
+        return;
+      }
+
       // Fetch dashboard stats
       final statsDoc =
           await _firestore.collection('admin').doc('dashboard_stats').get();
@@ -319,11 +338,18 @@ class _AdminHomePageState extends State<AdminHomePage> {
               context,
               MaterialPageRoute(builder: (context) => CategoriesPage()),
             );
-          }
-          else if (index == 2) {
+          } else if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => ProductsPage()),
+            );
+          } else if (index == 9) {
+            FirebaseAuth.instance.signOut();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginPage(onSignedIn: () {
+                
+              },)),
             );
           }
         });

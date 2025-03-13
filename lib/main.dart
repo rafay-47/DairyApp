@@ -56,6 +56,7 @@ class LoginState extends State<LoginPage> {
   bool passwordShow = true;
   String email = '';
   String password = '';
+  bool isLoading = false;
   final GlobalKey<FormState> _formkey = GlobalKey<FormState>();
 
   @override
@@ -142,25 +143,36 @@ class LoginState extends State<LoginPage> {
                 Center(
                   child: SizedBox(
                     width: 180.0,
-                    child: MaterialButton(
-                      color: Constants.secondaryColor,
-                      elevation: 5.0,
-                      height: 44.0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22.0),
-                      ),
-                      onPressed: () {
-                        if (_formkey.currentState!.validate()) {
-                          signIn();
-                        }
-                      },
-                      child: Text(
-                        'Login',
-                        style: TextStyle(
-                          fontSize: 20.0,
-                          color: Constants.primaryColor,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Constants.secondaryColor,
+                        elevation: 5.0,
+                        fixedSize: Size(180.0, 44.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22.0),
                         ),
                       ),
+
+                      onPressed:
+                          isLoading
+                              ? null
+                              : () {
+                                if (_formkey.currentState!.validate()) {
+                                  signIn();
+                                }
+                              },
+                      child:
+                          isLoading
+                              ? CircularProgressIndicator(
+                                color: Constants.primaryColor,
+                              )
+                              : Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontSize: 20.0,
+                                  color: Constants.primaryColor,
+                                ),
+                              ),
                     ),
                   ),
                 ),
@@ -244,48 +256,26 @@ class LoginState extends State<LoginPage> {
     final formState = _formkey.currentState;
     if (formState != null && formState.validate()) {
       try {
+        setState(() {
+          isLoading = true;
+        });
+
         // Authenticate the user
-        final userCredential = await firebase_auth.FirebaseAuth.instance
-            .signInWithEmailAndPassword(email: email, password: password);
+        await firebase_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-        // Call onSignedIn callback
-        widget.onSignedIn();
+        // Important: Force a rebuild of the root widget tree
+        if (mounted) {
+          // First call the callback
+          widget.onSignedIn();
 
-        // Check if user is admin
-        final userId = userCredential.user!.uid;
-        final userDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(userId)
-                .get();
-
-        if (userDoc.exists &&
-            userDoc.data() != null &&
-            userDoc.data()!['isAdmin'] == true) {
-          // Navigate to admin dashboard
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => AdminHomePage(
-                    onSignedOut: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-            ),
-          );
-        } else {
-          // Navigate to regular user homepage
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => HomePage(
-                    onSignedOut: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-            ),
+          // Then completely restart the navigation by pushing a replacement
+          // This forces the entire app to rebuild from the root
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => rootpage()),
+            (route) => false,
           );
         }
       } on firebase_auth.FirebaseAuthException catch (e) {
@@ -295,6 +285,12 @@ class LoginState extends State<LoginPage> {
             backgroundColor: Colors.red,
           ),
         );
+      } finally {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     }
   }
