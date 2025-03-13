@@ -1,4 +1,5 @@
 import 'package:dairyapp/Screens/CategoriesManagement.dart';
+import 'package:dairyapp/Screens/UserManagementPage.dart';
 import 'package:dairyapp/Screens/productManagement.dart';
 import 'package:dairyapp/constants.dart';
 import 'package:dairyapp/main.dart';
@@ -334,9 +335,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
             FirebaseAuth.instance.signOut();
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => LoginPage(onSignedIn: () {
-                
-              },)),
+              MaterialPageRoute(
+                builder: (context) => LoginPage(onSignedIn: () {}),
+              ),
+            );
+          } else if (index == 4) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => UserManagement()),
             );
           }
         });

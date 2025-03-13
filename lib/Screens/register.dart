@@ -16,7 +16,6 @@ class RegisterPage extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return RegisterState();
   }
 }
@@ -26,10 +25,10 @@ class RegisterState extends State<RegisterPage> {
   late String email, password, name, surname, number, cpassword;
   late bool passwordShow;
   bool _isAdmin = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     passwordShow = true;
   }
@@ -78,6 +77,129 @@ class RegisterState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildNameFields() {
+    return FadeAnimation(
+      1,
+      Row(
+        children: <Widget>[
+          Expanded(
+            child: _buildTextField(
+              hintText: "First Name",
+              onChanged: (input) => name = input,
+              validator: (input) {
+                if (input == null || input.isEmpty) {
+                  return "Enter name";
+                }
+                if (input.length < 2) {
+                  return "Name must be at least 2 characters";
+                }
+                return null;
+              },
+            ),
+          ),
+          SizedBox(width: Constants.textFieldSpacing),
+          Expanded(
+            child: _buildTextField(
+              hintText: "Last Name",
+              onChanged: (input) => surname = input,
+              validator: (input) {
+                if (input == null || input.isEmpty) {
+                  return "Enter surname";
+                }
+                if (input.length < 2) {
+                  return "Surname must be at least 2 characters";
+                }
+                return null;
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailField() {
+    return FadeAnimation(
+      1.0,
+      _buildTextField(
+        hintText: "Email",
+        onChanged: (input) => email = input,
+        validator: (input) {
+          if (input == null || input.isEmpty) {
+            return "Enter email";
+          }
+          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(input)) {
+            return "Enter a valid email address";
+          }
+          return null;
+        },
+        keyboardType: TextInputType.emailAddress,
+      ),
+    );
+  }
+
+  Widget _buildMobileField() {
+    return FadeAnimation(
+      1.0,
+      _buildTextField(
+        hintText: "Mobile",
+        onChanged: (input) => number = input,
+        validator: (input) {
+          if (input == null || input.isEmpty) {
+            return "Enter number";
+          }
+          if (!RegExp(r'^\d{10}$').hasMatch(input)) {
+            return "Enter a valid 10-digit number";
+          }
+          return null;
+        },
+        keyboardType: TextInputType.phone,
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return FadeAnimation(
+      1.0,
+      _buildTextField(
+        hintText: "Password",
+        onChanged: (input) => password = input,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter password';
+          }
+          if (value.length < 6) {
+            return 'Password must be at least 6 characters';
+          }
+          return null;
+        },
+        obscureText: passwordShow,
+        suffixIcon: _buildPasswordToggleIcon(),
+      ),
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return FadeAnimation(
+      1.0,
+      _buildTextField(
+        hintText: "Confirm Password",
+        onChanged: (input) => cpassword = input,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please confirm password';
+          }
+          if (value != password) {
+            return 'Passwords do not match';
+          }
+          return null;
+        },
+        obscureText: passwordShow,
+        suffixIcon: _buildPasswordToggleIcon(),
+      ),
+    );
+  }
+
   Widget _buildAdminToggle() {
     return FadeAnimation(
       1.0,
@@ -105,86 +227,6 @@ class RegisterState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildNameFields() {
-    return FadeAnimation(
-      1,
-      Row(
-        children: <Widget>[
-          Expanded(
-            child: _buildTextField(
-              hintText: "First Name",
-              onChanged: (input) => name = input,
-              validator: (input) => input == null ? "Enter name" : null,
-            ),
-          ),
-          SizedBox(width: Constants.textFieldSpacing),
-          Expanded(
-            child: _buildTextField(
-              hintText: "Last Name",
-              onChanged: (input) => surname = input,
-              validator: (input) => input == null ? "Enter surname" : null,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmailField() {
-    return FadeAnimation(
-      1.0,
-      _buildTextField(
-        hintText: "Email",
-        onChanged: (input) => email = input,
-        validator: (input) => input == null ? "Enter email" : null,
-      ),
-    );
-  }
-
-  Widget _buildMobileField() {
-    return FadeAnimation(
-      1.0,
-      _buildTextField(
-        hintText: "Mobile",
-        onChanged: (input) => number = input,
-        validator: (input) => input == null ? "Enter number" : null,
-        keyboardType: TextInputType.phone,
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return FadeAnimation(
-      1.0,
-      _buildTextField(
-        hintText: "Password",
-        onChanged: (input) => password = input,
-        validator: (value) => value == null ? 'Please enter password' : null,
-        obscureText: passwordShow,
-        suffixIcon: _buildPasswordToggleIcon(),
-      ),
-    );
-  }
-
-  Widget _buildConfirmPasswordField() {
-    return FadeAnimation(
-      1.0,
-      _buildTextField(
-        hintText: "Confirm Password",
-        onChanged: (input) => cpassword = input,
-        validator: (value) {
-          if (value == null) return 'Please enter password';
-          if (value != password) {
-            return 'Confirm password must be same as password';
-          }
-          return null;
-        },
-        obscureText: passwordShow,
-        suffixIcon: _buildPasswordToggleIcon(),
-      ),
-    );
-  }
-
   Widget _buildRegisterButton() {
     return FadeAnimation(
       1.0,
@@ -197,32 +239,24 @@ class RegisterState extends State<RegisterPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Constants.buttonBorderRadius),
           ),
-          onPressed: () {
-            if (fkey.currentState!.validate()) {
-              signup();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) {
-                    return HomePage(
-                      onSignedOut: () {
-                        setState(() {
-                          widget.onSignedIn();
-                        });
-                      },
-                    );
-                  },
-                ),
-              );
-            }
-          },
-          child: Text(
-            'Register',
-            style: TextStyle(
-              fontSize: Constants.loginButtonFontSize,
-              color: Colors.white,
-            ),
-          ),
+          onPressed: _isLoading ? null : signup,
+          child:
+              _isLoading
+                  ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 2,
+                    ),
+                  )
+                  : Text(
+                    'Register',
+                    style: TextStyle(
+                      fontSize: Constants.loginButtonFontSize,
+                      color: Colors.white,
+                    ),
+                  ),
         ),
       ),
     );
@@ -314,9 +348,39 @@ class RegisterState extends State<RegisterPage> {
     final formstate = fkey.currentState;
     if (formstate!.validate()) {
       formstate.save();
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
+        // Check if email already exists
+        final emailCheck =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where('Email', isEqualTo: email)
+                .get();
+
+        if (emailCheck.docs.isNotEmpty) {
+          _showError('This email is already registered');
+          return;
+        }
+
+        // Check if phone number already exists
+        final phoneCheck =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where('Number', isEqualTo: number)
+                .get();
+
+        if (phoneCheck.docs.isNotEmpty) {
+          _showError('This phone number is already registered');
+          return;
+        }
+
+        // Create user
         UserCredential user = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
+
         var map = <dynamic, dynamic>{};
         await users(
           uid: user.user!.uid,
@@ -339,15 +403,68 @@ class RegisterState extends State<RegisterPage> {
           0,
           _isAdmin,
           {},
-        ); // Pass _isAdmin here
+        );
 
-        FirebaseFirestore.instance.collection('cart').doc(user.user!.uid).set({
-          'product': map,
-        });
+        await FirebaseFirestore.instance
+            .collection('cart')
+            .doc(user.user!.uid)
+            .set({'product': map});
+
         widget.onSignedIn();
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => HomePage(
+                    onSignedOut: () {
+                      setState(() {
+                        widget.onSignedIn();
+                      });
+                    },
+                  ),
+            ),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        String errorMessage;
+        switch (e.code) {
+          case 'weak-password':
+            errorMessage = 'The password provided is too weak';
+            break;
+          case 'email-already-in-use':
+            errorMessage = 'This email is already registered';
+            break;
+          case 'invalid-email':
+            errorMessage = 'Invalid email address';
+            break;
+          default:
+            errorMessage = e.message ?? 'An error occurred during registration';
+        }
+        _showError(errorMessage);
       } catch (e) {
+        _showError('An error occurred during registration');
         print(e);
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 }
