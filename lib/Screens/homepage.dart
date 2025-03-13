@@ -272,7 +272,7 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
         ),
         _buildTabBarItem(
           icon: Icons.shopping_bag,
-          label: 'User_Orders',
+          label: 'Orders',
           index: 2,
           screen: screens[2],
         ),
@@ -289,12 +289,14 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           label: 'Plans',
           index: 3,
           screen: screens[3],
+          
         ),
         _buildTabBarItem(
           icon: Icons.settings,
           label: 'Settings',
           index: 4,
           screen: screens[4],
+          
         ),
         SizedBox(width: 30.0),
       ],
@@ -1187,20 +1189,28 @@ class _CartState extends State<Cart> {
     );
   }
 
-  void _clearCart() {
-    FirebaseFirestore.instance
-        .collection('cart')
-        .get()
-        .then((snapshot) {
-          for (DocumentSnapshot doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        })
-        .catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to clear cart: $error')),
-          );
-        });
+  Future<void> _clearCart() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('cart').get();
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to clear cart: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      throw error; // Rethrow the error to be caught by the calling function
+    }
   }
 
   void _proceedToCheckout() async {
@@ -1215,6 +1225,22 @@ class _CartState extends State<Cart> {
         throw 'Please login to place order';
       }
 
+      // Get user details from Firestore
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get();
+
+      if (!userDoc.exists) {
+        throw 'User profile not found';
+      }
+
+      final userData = userDoc.data() ?? {};
+      final userEmail = currentUser.email ?? '';
+      final userName = userData['name'] ?? '';
+      final userPhone = userData['phone'] ?? '';
+
       // Get cart items
       QuerySnapshot cartSnapshot =
           await FirebaseFirestore.instance.collection('cart').get();
@@ -1225,8 +1251,11 @@ class _CartState extends State<Cart> {
       // Get user's pincode
       final prefs = await SharedPreferences.getInstance();
       final pinCode = prefs.getString('user_pin_code');
+      if (pinCode == null) {
+        throw 'Please set your delivery location';
+      }
 
-      // Prepare items array with the structure matching your Firestore
+      // Prepare items array and calculate total
       List<Map<String, dynamic>> items = [];
       double totalAmount = 0;
 
@@ -1240,27 +1269,54 @@ class _CartState extends State<Cart> {
         totalAmount += price * quantity;
 
         items.add({
+          'productId': doc.id,
           'category': data['category'] ?? '',
           'description': data['description'] ?? '',
           'imageURL': data['imageUrl'] ?? null,
           'name': data['name'] ?? '',
-          'pinCode': pinCode ?? '',
           'price': price,
+          'quantity': quantity,
           'stock': data['stock'] ?? 0,
-          'timestamp': FieldValue.serverTimestamp(),
-          'userId': currentUser.uid,
         });
       }
 
-      // Create order in Firestore
+      // Calculate delivery charge
+      final deliveryCharge = totalAmount >= 500 ? 0 : 40;
+      final finalAmount = totalAmount + deliveryCharge;
+
+      // Generate order number
+      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+
+      // Create order document in Firestore
       await FirebaseFirestore.instance.collection('orders').add({
-        'items': items,
-        'timestamp': FieldValue.serverTimestamp(),
+        // User Information
         'userId': currentUser.uid,
+        'userEmail': userEmail,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userPinCode': pinCode,
+
+        // Order Information
+        'orderNumber': orderNumber,
+        'timestamp': FieldValue.serverTimestamp(),
+        'orderDate': DateTime.now(),
+        'status': 'Processing',
+        'isActive': true,
+
+        // Items and Amount
+        'items': items,
+        'subtotal': totalAmount,
+        'deliveryCharge': deliveryCharge,
+        'total': finalAmount,
+
+        // Additional Information
+        'paymentMethod': 'Cash on Delivery',
+        'deliveryAddress': userData['address'] ?? '',
+        'notes': '',
       });
 
       // Clear cart after successful order
-      _clearCart(); // Removed await since we don't need to wait for it
+      await _clearCart();
 
       // Show success dialog
       if (mounted) {
@@ -1276,8 +1332,17 @@ class _CartState extends State<Cart> {
                     Icon(Icons.check_circle, color: Colors.green, size: 60),
                     SizedBox(height: 16),
                     Text(
-                      'Your order has been placed successfully!',
+                      'Your order #$orderNumber has been placed successfully!',
                       textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Constants.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     SizedBox(height: 8),
                     Text(
@@ -1309,6 +1374,7 @@ class _CartState extends State<Cart> {
           SnackBar(
             content: Text('Failed to place order: $error'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
           ),
         );
       }

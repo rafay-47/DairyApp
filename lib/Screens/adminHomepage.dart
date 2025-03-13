@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dairyapp/Screens/AdminOrders.dart';
 
 class AdminHomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -343,6 +344,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => UserManagement()),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AdminOrders()),
             );
           }
         });
