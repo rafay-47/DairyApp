@@ -8,6 +8,7 @@ import 'package:dairyapp/Screens/Settings.dart' as settings;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dairyapp/Screens/UserOrders.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -37,8 +38,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     screens = [
       CategoriesList(pinCode: userPinCode),
       ProfilePage(),
-      //UserOrders(),
-      OrderHistoryPage(),
+      UserOrders(),
+      //OrderHistoryPage(),
       UserSubscriptionsPage(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
@@ -289,14 +290,12 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           label: 'Plans',
           index: 3,
           screen: screens[3],
-          
         ),
         _buildTabBarItem(
           icon: Icons.settings,
           label: 'Settings',
           index: 4,
           screen: screens[4],
-          
         ),
         SizedBox(width: 30.0),
       ],
@@ -573,8 +572,11 @@ class ProductsByCategoryPage extends StatelessWidget {
                                                   ) => SubscriptionDialog(
                                                     productId: productId,
                                                     productName: productName,
-                                                    productDescription: description,
-                                                    productPrice: double.parse(productPrice),
+                                                    productDescription:
+                                                        description,
+                                                    productPrice: double.parse(
+                                                      productPrice,
+                                                    ),
                                                   ),
                                             );
                                           },
