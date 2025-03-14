@@ -9,6 +9,7 @@ import 'package:dairyapp/Screens/Settings.dart' as settings;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dairyapp/Screens/UserOrders.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -46,7 +47,7 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     currentScreen = screens[0];
   }
 
-  Future<void> _checkPinCode() async {
+  void _checkPinCode() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPinCode = prefs.getString('user_pin_code');
 
@@ -60,7 +61,11 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           currentScreen = screens[0];
         }
       } else {
-        _showPinCodeDialog();
+        // Don't show PIN code dialog immediately
+        screens[0] = CategoriesList(pinCode: null);
+        if (currentTab == 0) {
+          currentScreen = screens[0];
+        }
       }
     });
   }
@@ -265,12 +270,12 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           index: 0,
           screen: screens[0],
         ),
-        _buildTabBarItem(
-          icon: Icons.person,
-          label: 'Profile',
-          index: 1,
-          screen: screens[1],
-        ),
+        // _buildTabBarItem(
+        //   icon: Icons.person,
+        //   label: 'Profile',
+        //   index: 1,
+        //   screen: screens[1],
+        // ),
         _buildTabBarItem(
           icon: Icons.shopping_bag,
           label: 'Orders',
@@ -287,17 +292,15 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
       children: <Widget>[
         _buildTabBarItem(
           icon: Icons.assignment,
-          label: 'Plans',
+          label: 'Subscriptions',
           index: 3,
           screen: screens[3],
-          
         ),
         _buildTabBarItem(
           icon: Icons.settings,
           label: 'Settings',
           index: 4,
           screen: screens[4],
-          
         ),
         SizedBox(width: 30.0),
       ],
@@ -574,8 +577,11 @@ class ProductsByCategoryPage extends StatelessWidget {
                                                   ) => SubscriptionDialog(
                                                     productId: productId,
                                                     productName: productName,
-                                                    productDescription: description,
-                                                    productPrice: double.parse(productPrice),
+                                                    productDescription:
+                                                        description,
+                                                    productPrice: double.parse(
+                                                      productPrice,
+                                                    ),
                                                   ),
                                             );
                                           },
@@ -1607,12 +1613,34 @@ class CategoriesList extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               'Location not set',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
             Text(
               'Please set your PIN code to view available products',
               textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Show PIN code dialog when user clicks button
+                final HomeState? homeState =
+                    context.findAncestorStateOfType<HomeState>();
+                if (homeState != null) {
+                  homeState._showPinCodeDialog();
+                }
+              },
+              icon: Icon(Icons.location_on),
+              label: Text('SET PIN CODE'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.accentColor,
+                foregroundColor: Constants.primaryColor,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ],
         ),

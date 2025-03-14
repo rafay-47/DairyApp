@@ -18,7 +18,8 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
   // Get the start date for a subscription (today or subscription start date)
   DateTime _getStartDate(DocumentSnapshot subscription) {
     try {
-      DateTime startDate = subscription['startDate']?.toDate() ?? DateTime.now();
+      DateTime startDate =
+          subscription['startDate']?.toDate() ?? DateTime.now();
       DateTime today = DateTime.now();
       return startDate.isBefore(today) ? today : startDate;
     } catch (e) {
@@ -30,47 +31,82 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
   List<DateTime> _getDeliveryDates(DocumentSnapshot subscription) {
     String planName = subscription['planName'] ?? 'weekly';
     DateTime startDate = _getStartDate(subscription);
-    
+
     int totalDays = planName.toLowerCase() == 'weekly' ? 7 : 30;
     List<DateTime> dates = [];
-    
+
     for (int i = 0; i < totalDays; i++) {
       dates.add(startDate.add(Duration(days: i)));
     }
-    
+
     return dates;
   }
 
   // Check if a specific day is cancelled
   bool _isDayCancelled(DocumentSnapshot subscription, DateTime date) {
-    List<dynamic> cancelledDays = subscription['cancelledDays'] ?? [];
-    String dateString = DateFormat('yyyy-MM-dd').format(date);
-    
-    return cancelledDays.any((cancelledDate) {
-      if (cancelledDate is Timestamp) {
-        return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) == dateString;
-      } else if (cancelledDate is String) {
-        return cancelledDate == dateString;
+    try {
+      // First check if the field exists in the document
+      final data = subscription.data() as Map<String, dynamic>?;
+      if (data == null || !data.containsKey('cancelledDays')) {
+        return false; // If no cancelledDays field exists, nothing is cancelled
       }
-      return false;
-    });
+
+      List<dynamic> cancelledDays = data['cancelledDays'] ?? [];
+      String dateString = DateFormat('yyyy-MM-dd').format(date);
+
+      return cancelledDays.any((cancelledDate) {
+        if (cancelledDate is Timestamp) {
+          return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) ==
+              dateString;
+        } else if (cancelledDate is String) {
+          return cancelledDate == dateString;
+        }
+        return false;
+      });
+    } catch (e) {
+      print('Error checking cancelled days: $e');
+      return false; // If any error occurs, assume the day is not cancelled
+    }
   }
 
   // Cancel delivery for a specific day for a given subscription
-  Future<void> _cancelDelivery(DocumentSnapshot subscription, DateTime date) async {
+  Future<void> _cancelDelivery(
+    DocumentSnapshot subscription,
+    DateTime date,
+  ) async {
+    // Check if current time is after midnight
+    final now = DateTime.now();
+    final currentTimeOfDay = TimeOfDay.fromDateTime(now);
+
+    // If it's after midnight and before 6 AM, prevent cancellation
+    if (currentTimeOfDay.hour >= 0 && currentTimeOfDay.hour < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deliveries cannot be cancelled between 12 AM and 6 AM',
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    
+
     try {
       // Convert DateTime to a string format for consistency
       String dateString = DateFormat('yyyy-MM-dd').format(date);
-      
+
       await subscription.reference.update({
         'cancelledDays': FieldValue.arrayUnion([dateString]),
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cancelled delivery on ${DateFormat('MMM d, yyyy').format(date)}'),
+          content: Text(
+            'Cancelled delivery on ${DateFormat('MMM d, yyyy').format(date)}',
+          ),
           backgroundColor: Colors.green[700],
           behavior: SnackBarBehavior.floating,
         ),
@@ -89,30 +125,51 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
   }
 
   // Restore a previously cancelled delivery
-  Future<void> _restoreDelivery(DocumentSnapshot subscription, DateTime date) async {
+  Future<void> _restoreDelivery(
+    DocumentSnapshot subscription,
+    DateTime date,
+  ) async {
     setState(() => _isLoading = true);
-    
+
     try {
       String dateString = DateFormat('yyyy-MM-dd').format(date);
-      List<dynamic> cancelledDays = List<dynamic>.from(subscription['cancelledDays'] ?? []);
-      
+
+      // Safely get the cancelledDays field
+      final data = subscription.data() as Map<String, dynamic>?;
+      if (data == null || !data.containsKey('cancelledDays')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No cancelled days to restore'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      List<dynamic> cancelledDays = List<dynamic>.from(
+        data['cancelledDays'] ?? [],
+      );
+
       // Remove the date from cancelled days
       cancelledDays.removeWhere((cancelledDate) {
         if (cancelledDate is Timestamp) {
-          return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) == dateString;
+          return DateFormat('yyyy-MM-dd').format(cancelledDate.toDate()) ==
+              dateString;
         } else if (cancelledDate is String) {
           return cancelledDate == dateString;
         }
         return false;
       });
-      
-      await subscription.reference.update({
-        'cancelledDays': cancelledDays,
-      });
-      
+
+      await subscription.reference.update({'cancelledDays': cancelledDays});
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Restored delivery on ${DateFormat('MMM d, yyyy').format(date)}'),
+          content: Text(
+            'Restored delivery on ${DateFormat('MMM d, yyyy').format(date)}',
+          ),
           backgroundColor: Colors.blue[700],
           behavior: SnackBarBehavior.floating,
         ),
@@ -134,9 +191,7 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
   Widget build(BuildContext context) {
     if (_currentUser == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text('My Subscriptions'),
-        ),
+        appBar: AppBar(title: Text('My Subscriptions')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -174,22 +229,30 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
       body: Stack(
         children: [
           StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('users')
-                .doc(_currentUser!.uid)
-                .collection('product_subscriptions')
-                .snapshots(),
+            stream:
+                _firestore
+                    .collection('users')
+                    .doc(_currentUser!.uid)
+                    .collection('product_subscriptions')
+                    .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
+                      Icon(
+                        Icons.error_outline,
+                        size: 60,
+                        color: Colors.red[300],
+                      ),
                       SizedBox(height: 16),
                       Text(
                         'Error fetching subscriptions',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       SizedBox(height: 8),
                       Text(snapshot.error.toString()),
@@ -197,23 +260,30 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                   ),
                 );
               }
-              
+
               if (!snapshot.hasData) {
                 return Center(child: CircularProgressIndicator());
               }
-              
+
               final subscriptions = snapshot.data!.docs;
-              
+
               if (subscriptions.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.subscriptions_outlined, size: 60, color: Colors.grey),
+                      Icon(
+                        Icons.subscriptions_outlined,
+                        size: 60,
+                        color: Colors.grey,
+                      ),
                       SizedBox(height: 16),
                       Text(
                         'No active subscriptions found',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -221,17 +291,22 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                         label: Text('Browse Products'),
                         onPressed: () {
                           // Navigate to products page
-                          Navigator.of(context).pushReplacementNamed('/products');
+                          Navigator.of(
+                            context,
+                          ).pushReplacementNamed('/products');
                         },
                         style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 );
               }
-              
+
               return ListView.builder(
                 padding: EdgeInsets.all(12),
                 itemCount: subscriptions.length,
@@ -239,9 +314,11 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                   final subscription = subscriptions[index];
                   final productName = subscription['productName'] ?? 'Product';
                   final planName = subscription['planName'] ?? 'Subscription';
-                  final endDate = subscription['endDate']?.toDate() ?? DateTime.now().add(Duration(days: 30));
+                  final endDate =
+                      subscription['endDate']?.toDate() ??
+                      DateTime.now().add(Duration(days: 30));
                   final deliveryDates = _getDeliveryDates(subscription);
-                  
+
                   return Card(
                     margin: EdgeInsets.only(bottom: 16),
                     elevation: 3,
@@ -255,7 +332,9 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                         Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor.withOpacity(0.1),
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(16),
                               topRight: Radius.circular(16),
@@ -300,49 +379,65 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                                   showModalBottomSheet(
                                     context: context,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                                    ),
-                                    builder: (context) => Padding(
-                                      padding: EdgeInsets.all(20),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Subscription Details',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: 20),
-                                          _detailRow('Product', productName),
-                                          _detailRow('Plan', planName),
-                                          _detailRow('End Date', DateFormat('MMMM d, yyyy').format(endDate)),
-                                          _detailRow('Status', 'Active'),
-                                          SizedBox(height: 20),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                              },
-                                              child: Text('Close'),
-                                              style: ElevatedButton.styleFrom(
-                                                padding: EdgeInsets.symmetric(vertical: 12),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20),
                                       ),
                                     ),
+                                    builder:
+                                        (context) => Padding(
+                                          padding: EdgeInsets.all(20),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Subscription Details',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              SizedBox(height: 20),
+                                              _detailRow(
+                                                'Product',
+                                                productName,
+                                              ),
+                                              _detailRow('Plan', planName),
+                                              _detailRow(
+                                                'End Date',
+                                                DateFormat(
+                                                  'MMMM d, yyyy',
+                                                ).format(endDate),
+                                              ),
+                                              _detailRow('Status', 'Active'),
+                                              SizedBox(height: 20),
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: Text('Close'),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        padding:
+                                                            EdgeInsets.symmetric(
+                                                              vertical: 12,
+                                                            ),
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                   );
                                 },
                               ),
                             ],
                           ),
                         ),
-                        
+
                         // Delivery calendar section
                         Padding(
                           padding: EdgeInsets.all(16),
@@ -363,134 +458,204 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
-                                  children: deliveryDates.map((date) {
-                                    bool isCancelled = _isDayCancelled(subscription, date);
-                                    bool isPast = date.isBefore(DateTime.now().subtract(Duration(days: 1)));
-                                    bool isToday = DateFormat('yyyyMMdd').format(date) == 
-                                                  DateFormat('yyyyMMdd').format(DateTime.now());
-                                    
-                                    return Container(
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.grey[300]!,
-                                            width: 1,
+                                  children:
+                                      deliveryDates.map((date) {
+                                        bool isCancelled = _isDayCancelled(
+                                          subscription,
+                                          date,
+                                        );
+                                        bool isPast = date.isBefore(
+                                          DateTime.now().subtract(
+                                            Duration(days: 1),
                                           ),
-                                        ),
-                                        color: isToday ? Colors.yellow[50] : null,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 12,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 40,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: isCancelled 
-                                                    ? Colors.red[100]
-                                                    : isPast 
-                                                        ? Colors.grey[200]
-                                                        : isToday 
+                                        );
+                                        bool isToday =
+                                            DateFormat(
+                                              'yyyyMMdd',
+                                            ).format(date) ==
+                                            DateFormat(
+                                              'yyyyMMdd',
+                                            ).format(DateTime.now());
+
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: Colors.grey[300]!,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            color:
+                                                isToday
+                                                    ? Colors.yellow[50]
+                                                    : null,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color:
+                                                        isCancelled
+                                                            ? Colors.red[100]
+                                                            : isPast
+                                                            ? Colors.grey[200]
+                                                            : isToday
                                                             ? Colors.amber[100]
                                                             : Colors.green[100],
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  '${date.day}',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: isCancelled 
-                                                        ? Colors.red[800]
-                                                        : isPast 
-                                                            ? Colors.grey[600]
-                                                            : isToday 
-                                                                ? Colors.amber[800]
-                                                                : Colors.green[800],
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      '${date.day}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            isCancelled
+                                                                ? Colors
+                                                                    .red[800]
+                                                                : isPast
+                                                                ? Colors
+                                                                    .grey[600]
+                                                                : isToday
+                                                                ? Colors
+                                                                    .amber[800]
+                                                                : Colors
+                                                                    .green[800],
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
-                                            SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    DateFormat('EEEE, MMMM d').format(date),
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.w500,
-                                                      color: isPast ? Colors.grey : Colors.black87,
-                                                    ),
-                                                  ),
-                                                  SizedBox(height: 2),
-                                                  Text(
-                                                    isCancelled
-                                                        ? 'Delivery Cancelled'
-                                                        : isPast
+                                                SizedBox(width: 16),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        DateFormat(
+                                                          'EEEE, MMMM d',
+                                                        ).format(date),
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color:
+                                                              isPast
+                                                                  ? Colors.grey
+                                                                  : Colors
+                                                                      .black87,
+                                                        ),
+                                                      ),
+                                                      SizedBox(height: 2),
+                                                      Text(
+                                                        isCancelled
+                                                            ? 'Delivery Cancelled'
+                                                            : isPast
                                                             ? 'Delivered'
                                                             : isToday
-                                                                ? 'Today\'s Delivery'
-                                                                : 'Scheduled Delivery',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: isCancelled
-                                                          ? Colors.red
-                                                          : isPast
-                                                              ? Colors.grey[600]
-                                                              : isToday
-                                                                  ? Colors.amber[800]
-                                                                  : Colors.green[700],
-                                                    ),
+                                                            ? 'Today\'s Delivery'
+                                                            : 'Scheduled Delivery',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              isCancelled
+                                                                  ? Colors.red
+                                                                  : isPast
+                                                                  ? Colors
+                                                                      .grey[600]
+                                                                  : isToday
+                                                                  ? Colors
+                                                                      .amber[800]
+                                                                  : Colors
+                                                                      .green[700],
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                if (!isPast) // Only show action buttons for non-past dates
+                                                  isCancelled
+                                                      ? OutlinedButton.icon(
+                                                        icon: Icon(
+                                                          Icons.restore,
+                                                          size: 18,
+                                                        ),
+                                                        label: Text('Restore'),
+                                                        onPressed:
+                                                            _isLoading
+                                                                ? null
+                                                                : () =>
+                                                                    _restoreDelivery(
+                                                                      subscription,
+                                                                      date,
+                                                                    ),
+                                                        style: OutlinedButton.styleFrom(
+                                                          foregroundColor:
+                                                              Colors.blue[700],
+                                                          side: BorderSide(
+                                                            color:
+                                                                Colors
+                                                                    .blue[700]!,
+                                                          ),
+                                                          padding:
+                                                              EdgeInsets.symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 8,
+                                                              ),
+                                                        ),
+                                                      )
+                                                      : ElevatedButton.icon(
+                                                        icon: Icon(
+                                                          Icons.cancel_outlined,
+                                                          size: 18,
+                                                        ),
+                                                        label: Text('Cancel'),
+                                                        onPressed:
+                                                            _isLoading
+                                                                ? null
+                                                                : () =>
+                                                                    _cancelDelivery(
+                                                                      subscription,
+                                                                      date,
+                                                                    ),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red[50],
+                                                          foregroundColor:
+                                                              Colors.red[700],
+                                                          padding:
+                                                              EdgeInsets.symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 8,
+                                                              ),
+                                                        ),
+                                                      ),
+                                              ],
                                             ),
-                                            SizedBox(width: 8),
-                                            if (!isPast) // Only show action buttons for non-past dates
-                                              isCancelled
-                                                  ? OutlinedButton.icon(
-                                                      icon: Icon(Icons.restore, size: 18),
-                                                      label: Text('Restore'),
-                                                      onPressed: _isLoading
-                                                          ? null
-                                                          : () => _restoreDelivery(subscription, date),
-                                                      style: OutlinedButton.styleFrom(
-                                                        foregroundColor: Colors.blue[700],
-                                                        side: BorderSide(color: Colors.blue[700]!),
-                                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                      ),
-                                                    )
-                                                  : ElevatedButton.icon(
-                                                      icon: Icon(Icons.cancel_outlined, size: 18),
-                                                      label: Text('Cancel'),
-                                                      onPressed: _isLoading
-                                                          ? null
-                                                          : () => _cancelDelivery(subscription, date),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.red[50],
-                                                        foregroundColor: Colors.red[700],
-                                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                      ),
-                                                    ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                          ),
+                                        );
+                                      }).toList(),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        
+
                         // Subscription footer
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -522,9 +687,7 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.3),
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -549,12 +712,7 @@ class _UserSubscriptionsPageState extends State<UserSubscriptionsPage> {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(value, style: TextStyle(fontWeight: FontWeight.w500)),
           ),
         ],
       ),

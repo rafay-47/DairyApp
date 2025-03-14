@@ -77,18 +77,6 @@ class _UserOrdersState extends State<UserOrders> {
         .snapshots();
   }
 
-  bool _canCancelOrder(DateTime orderDate) {
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1);
-    final orderMidnight = DateTime(
-      orderDate.year,
-      orderDate.month,
-      orderDate.day + 1,
-    );
-
-    return orderMidnight.isAtSameMomentAs(midnight) && now.isBefore(midnight);
-  }
-
   Widget _buildOrdersList(bool isActive) {
     return StreamBuilder<QuerySnapshot>(
       stream: _getOrders(isActive),
@@ -133,7 +121,9 @@ class _UserOrdersState extends State<UserOrders> {
               final isHidden = data['isHidden'] ?? false; // Add this line
 
               if (isHidden) return false; // Skip hidden orders
-              return isActive ? status == 'Processing' : status != 'Processing';
+              return isActive
+                  ? (status == 'Processing' || status == 'Shipped')
+                  : (status == 'Delivered' || status == 'Cancelled');
             }).toList();
 
         if (filteredOrders.isEmpty) {
@@ -349,41 +339,22 @@ class _UserOrdersState extends State<UserOrders> {
                         if (isActive && orderStatus == 'Processing') ...[
                           SizedBox(height: 16),
                           Center(
-                            child:
-                                _canCancelOrder(formattedDate)
-                                    ? ElevatedButton(
-                                      onPressed:
-                                          () => _cancelOrder(
-                                            filteredOrders[index].id,
-                                          ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                      child: Text('Cancel Order'),
-                                    )
-                                    : Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                      ),
-                                      child: Text(
-                                        'Orders can only be cancelled before midnight on the day of placing the order',
-                                        style: TextStyle(
-                                          color: Colors.red[400],
-                                          fontSize: 12,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
+                            child: ElevatedButton(
+                              onPressed:
+                                  () => _cancelOrder(filteredOrders[index].id),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Text('Cancel Order'),
+                            ),
                           ),
                         ],
                       ],
@@ -415,22 +386,11 @@ class _UserOrdersState extends State<UserOrders> {
 
   Future<void> _cancelOrder(String orderId) async {
     try {
-      // Get the order details first
-      final orderDoc = await _firestore.collection('orders').doc(orderId).get();
-      final orderData = orderDoc.data() as Map<String, dynamic>;
-      final orderDate = (orderData['orderDate'] as Timestamp).toDate();
-
-      // Validate cancellation time
-      if (!_canCancelOrder(orderDate)) {
-        throw 'Orders can only be cancelled before midnight on the day of placing the order';
-      }
-
       await _firestore.collection('orders').doc(orderId).update({
         'status': 'Cancelled',
         'cancelledAt': FieldValue.serverTimestamp(),
       });
 
-      //Add setState to triggerrefersh
       setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
