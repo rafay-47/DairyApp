@@ -1,4 +1,5 @@
 import 'package:dairyapp/Screens/SubscribedPage.dart';
+import 'package:dairyapp/Screens/UserOrders.dart';
 import 'package:dairyapp/Screens/subscriptionPage.dart';
 import 'package:double_back_to_close_app/double_back_to_close_app.dart';
 import 'package:flutter/material.dart';
@@ -37,8 +38,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     screens = [
       CategoriesList(pinCode: userPinCode),
       ProfilePage(),
-      //UserOrders(),
-      OrderHistoryPage(),
+      UserOrders(),
+      //OrderHistoryPage(),
       UserSubscriptionsPage(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];

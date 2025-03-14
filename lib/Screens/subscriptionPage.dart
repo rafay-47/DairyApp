@@ -156,19 +156,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   subtitle: Text(
                                     'Ends on: ${subscription['endDate'].toDate().toLocal().toString().split(' ')[0]}',
                                   ),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.cancel, color: Colors.red),
-                                    onPressed: () async {
-                                      await subscription.reference.update({
-                                        'status': 'cancelled',
-                                      });
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Subscription cancelled'),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  
                                 ),
                               );
                             },
