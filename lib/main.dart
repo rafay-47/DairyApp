@@ -10,11 +10,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'Animations/FadeAnimation.dart';
 import 'Screens/register.dart';
 import 'firebase_options.dart';
+import 'package:dairyapp/services/push_notifications.dart';
 import 'constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await PushNotificationService().initialize();
 
   runApp(
     AuthProvider(
@@ -283,6 +286,23 @@ class LoginState extends State<LoginPage> {
           email: email,
           password: password,
         );
+
+        // After successful login, send notification to the specific email
+        try {
+          await PushNotificationService().sendNotification(
+            userEmail:
+                'AbdulRafay2582@gmail.com', // This email will receive the notification
+            title: 'New Login Alert',
+            body: 'A user just logged into the Dairy App',
+            data: {
+              'type': 'login_alert',
+              'loginTime': DateTime.now().toString(),
+              'userEmail': email, // The email of the user who logged in
+            },
+          );
+        } catch (notificationError) {
+          print('Failed to send notification: $notificationError');
+        }
 
         if (mounted) {
           widget.onSignedIn();
