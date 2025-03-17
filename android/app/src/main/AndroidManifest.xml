@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Add Internet permission required by Stripe -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
     <application
         android:label="dairyapp"
         android:name="${applicationName}"
@@ -20,6 +23,10 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Add Flutter Fragment Activity meta-data for Stripe -->
+            <meta-data
+              android:name="io.flutter.embedding.android.FlutterFragmentActivity"
+              android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 
 class UserOrders extends StatefulWidget {
-  
   @override
   _UserOrdersState createState() => _UserOrdersState();
 }
@@ -21,10 +20,12 @@ class _UserOrdersState extends State<UserOrders> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('My Orders'),
-          backgroundColor: Constants.accentColor,
+          backgroundColor: Constants.primaryColor,
           bottom: TabBar(
             tabs: [Tab(text: 'Active Orders'), Tab(text: 'Past Orders')],
           ),
+          centerTitle: true,
+          elevation: 0,
         ),
         body: TabBarView(
           children: [_buildOrdersList(true), _buildOrdersList(false)],

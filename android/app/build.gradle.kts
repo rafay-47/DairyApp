@@ -40,3 +40,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Add Material Components dependency
+    implementation("com.google.android.material:material:1.9.0")
+}

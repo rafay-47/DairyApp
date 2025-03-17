@@ -1,5 +1,6 @@
 import 'package:dairyapp/Screens/SubscribedPage.dart';
 import 'package:dairyapp/Screens/UserOrders.dart';
+import 'package:dairyapp/Screens/cart.dart';
 import 'package:dairyapp/Screens/subscriptionPage.dart';
 import 'package:double_back_to_close_app/double_back_to_close_app.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +9,6 @@ import 'package:dairyapp/Screens/profile.dart';
 import 'package:dairyapp/Screens/Settings.dart' as settings;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Constants.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:dairyapp/Screens/UserOrders.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -149,29 +148,38 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
       resizeToAvoidBottomInset: false,
       backgroundColor: Constants.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Constants.accentColor,
-        title: Text(
-          'Dairy App',
-          style: TextStyle(
-            color: Constants.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
+        backgroundColor: Constants.primaryColor,
+        elevation: 0,
+        title: Row(
+          children: [
+            Icon(Icons.local_shipping_outlined, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Dairy App',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
         actions: [
           if (isLocationVerified)
-            Padding(
-              padding: EdgeInsets.only(right: 16.0),
+            Container(
+              margin: EdgeInsets.only(right: 16.0),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: InkWell(
                 onTap: () => _showPinCodeDialog(),
                 child: Row(
                   children: [
-                    Icon(Icons.location_on, color: Constants.primaryColor),
+                    Icon(Icons.location_on, size: 16),
                     SizedBox(width: 4),
                     Text(
                       userPinCode ?? '',
                       style: TextStyle(
-                        color: Constants.primaryColor,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -179,11 +187,16 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
               ),
             ),
         ],
-        centerTitle: true,
-        elevation: 0.0,
+        centerTitle: false,
       ),
       body: DoubleBackToCloseApp(
-        snackBar: const SnackBar(content: Text('Tap Back to exit')),
+        snackBar: SnackBar(
+          content: Text('Tap Back to exit'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
         child: PageStorage(bucket: bucket, child: currentScreen),
       ),
       floatingActionButton: FloatingActionButton(
@@ -193,7 +206,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
             MaterialPageRoute(builder: (context) => Cart()),
           );
         },
-        backgroundColor: Constants.accentColor,
+        backgroundColor: Constants.primaryColor,
+        elevation: 4,
         child: Stack(
           children: [
             Icon(Icons.shopping_cart, color: Colors.white),
@@ -214,6 +228,13 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 2,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
                         ),
                         constraints: BoxConstraints(
                           minWidth: 16,
@@ -246,7 +267,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
         child: BottomAppBar(
           shape: CircularNotchedRectangle(),
           notchMargin: 10,
-          elevation: 8,
+          color: Colors.white,
+          elevation: 0,
           child: Container(
             height: 60,
             child: Row(
@@ -260,50 +282,46 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildLeftTabBar() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        SizedBox(width: 30.0),
-        _buildTabBarItem(
-          icon: Icons.grid_view,
-          label: 'Categories',
-          index: 0,
-          screen: screens[0],
-        ),
-        // _buildTabBarItem(
-        //   icon: Icons.person,
-        //   label: 'Profile',
-        //   index: 1,
-        //   screen: screens[1],
-        // ),
-        _buildTabBarItem(
-          icon: Icons.shopping_bag,
-          label: 'Orders',
-          index: 2,
-          screen: screens[2],
-        ),
-      ],
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: <Widget>[
+          _buildTabBarItem(
+            icon: Icons.grid_view,
+            label: 'Categories',
+            index: 0,
+            screen: screens[0],
+          ),
+          _buildTabBarItem(
+            icon: Icons.shopping_bag,
+            label: 'Orders',
+            index: 2,
+            screen: screens[2],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildRightTabBar() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _buildTabBarItem(
-          icon: Icons.assignment,
-          label: 'Subscriptions',
-          index: 3,
-          screen: screens[3],
-        ),
-        _buildTabBarItem(
-          icon: Icons.settings,
-          label: 'Settings',
-          index: 4,
-          screen: screens[4],
-        ),
-        SizedBox(width: 30.0),
-      ],
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: <Widget>[
+          _buildTabBarItem(
+            icon: Icons.assignment,
+            label: 'Subscriptions',
+            index: 3,
+            screen: screens[3],
+          ),
+          _buildTabBarItem(
+            icon: Icons.settings,
+            label: 'Settings',
+            index: 4,
+            screen: screens[4],
+          ),
+        ],
+      ),
     );
   }
 
@@ -314,7 +332,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
     required Widget screen,
   }) {
     return MaterialButton(
-      minWidth: 40,
+      minWidth: 0,
+      padding: EdgeInsets.symmetric(horizontal: 8.0),
       onPressed: () {
         setState(() {
           currentScreen = screen;
@@ -327,13 +346,16 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           Icon(
             icon,
             color: currentTab == index ? Constants.accentColor : Colors.grey,
+            size: 24,
           ),
           Text(
             label,
             style: TextStyle(
               color: currentTab == index ? Constants.accentColor : Colors.grey,
-              fontSize: 12,
+              fontSize: 11,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -341,8 +363,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
   }
 }
 
-// Displays products for a given category in a grid layout.
-class ProductsByCategoryPage extends StatelessWidget {
+// Updated ProductsByCategoryPage with modern UI and fixed overflow
+class ProductsByCategoryPage extends StatefulWidget {
   final String category;
   final String? pinCode;
 
@@ -350,382 +372,785 @@ class ProductsByCategoryPage extends StatelessWidget {
     : super(key: key);
 
   @override
+  State<ProductsByCategoryPage> createState() => _ProductsByCategoryPageState();
+}
+
+class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
+  // Search and filter state variables
+  String searchQuery = '';
+  RangeValues priceRange = RangeValues(0, 500);
+  String sortBy = 'Popularity';
+  TextEditingController searchController = TextEditingController();
+
+  @override
   Widget build(BuildContext context) {
+    // Create the base query
     Query productsQuery = FirebaseFirestore.instance
         .collection('products')
-        .where('category', isEqualTo: category);
+        .where('category', isEqualTo: widget.category);
 
     // Add location filtering if needed
-    if (pinCode != null) {
-      productsQuery = productsQuery.where('pinCode', isEqualTo: pinCode);
+    if (widget.pinCode != null) {
+      productsQuery = productsQuery.where('pinCode', isEqualTo: widget.pinCode);
     }
 
     return Scaffold(
+      backgroundColor: Constants.backgroundColor,
       appBar: AppBar(
-        title: Text(category, style: TextStyle(color: Constants.primaryColor)),
-        backgroundColor: Constants.accentColor,
+        backgroundColor: Constants.primaryColor,
+        elevation: 0,
+        title: Row(
+          children: [
+            Icon(Icons.category, size: 20),
+            SizedBox(width: 8),
+            Text(
+              widget.category,
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.filter_list, color: Constants.primaryColor),
+            icon: Icon(Icons.search, color: Colors.white),
             onPressed: () {
-              // Show filter options
+              _showSearchBar();
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.filter_list, color: Colors.white),
+            onPressed: () {
               _showFilterDialog(context);
             },
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: productsQuery.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading products'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          final products = snapshot.data!.docs;
-          if (products.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No products found in this category',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[700]),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Try changing your location or browse other categories',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${products.length} Products',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    DropdownButton<String>(
-                      value: 'Popularity',
-                      underline: Container(),
-                      icon: Icon(Icons.keyboard_arrow_down),
-                      items:
-                          <String>[
-                            'Popularity',
-                            'Price: Low to High',
-                            'Price: High to Low',
-                            'Newest First',
-                          ].map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                      onChanged: (String? newValue) {
-                        // Handle sorting
-                      },
+      body: Column(
+        children: [
+          // Search bar (visible when searching)
+          if (searchQuery.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: products.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.7,
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search in ${widget.category}',
+                    border: InputBorder.none,
+                    icon: Icon(Icons.search, color: Constants.primaryColor),
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          searchQuery = '';
+                          searchController.clear();
+                        });
+                      },
+                    ),
                   ),
-                  itemBuilder: (context, index) {
-                    final productData =
-                        products[index].data() as Map<String, dynamic>;
-                    final productId = products[index].id;
-                    final productName =
-                        productData['name'] ?? 'Unnamed Product';
-                    final productPrice =
-                        productData['price'] != null
-                            ? productData['price'].toString()
-                            : 'N/A';
-                    final imageUrl = productData['imageUrl'] ?? '';
-                    final description = productData['description'] ?? '';
-                    final unit = productData['unit'] ?? '';
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                    });
+                  },
+                ),
+              ),
+            ),
 
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () {
-                          // Navigate to product detail
+          // Active filters chips
+          if (priceRange.start > 0 || priceRange.end < 500)
+            Container(
+              height: 50,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  if (priceRange.start > 0 || priceRange.end < 500)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Chip(
+                        label: Text(
+                          'Price: ₹${priceRange.start.toInt()} - ₹${priceRange.end.toInt()}',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        backgroundColor: Constants.primaryColor.withOpacity(
+                          0.1,
+                        ),
+                        deleteIcon: Icon(Icons.close, size: 16),
+                        onDeleted: () {
+                          setState(() {
+                            priceRange = RangeValues(0, 500);
+                          });
                         },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    width: double.infinity,
-                                    child:
-                                        imageUrl.isNotEmpty
-                                            ? Image.network(
-                                              imageUrl,
-                                              fit: BoxFit.cover,
-                                            )
-                                            : Container(
-                                              color: Colors.grey[200],
-                                              child: Icon(
-                                                Icons.image,
-                                                size: 40,
-                                                color: Colors.grey[400],
-                                              ),
-                                            ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: Container(
-                                      padding: EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.favorite_border,
-                                        size: 20,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+          // Products stream builder
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: productsQuery.snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error loading products'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: Constants.primaryColor,
+                    ),
+                  );
+                }
+
+                // Filter the products based on search and filters
+                var products = snapshot.data!.docs;
+
+                // Apply search filter
+                if (searchQuery.isNotEmpty) {
+                  products =
+                      products.where((product) {
+                        final data = product.data() as Map<String, dynamic>;
+                        final name =
+                            data['name']?.toString().toLowerCase() ?? '';
+                        final description =
+                            data['description']?.toString().toLowerCase() ?? '';
+                        final query = searchQuery.toLowerCase();
+                        return name.contains(query) ||
+                            description.contains(query);
+                      }).toList();
+                }
+
+                // Apply price range filter
+                products =
+                    products.where((product) {
+                      final data = product.data() as Map<String, dynamic>;
+                      final price =
+                          data['price'] != null
+                              ? double.parse(data['price'].toString())
+                              : 0;
+                      return price >= priceRange.start &&
+                          price <= priceRange.end;
+                    }).toList();
+
+                // Apply sorting
+                products = _sortProducts(products, sortBy);
+
+                if (products.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Constants.primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            size: 80,
+                            color: Constants.primaryColor,
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        Text(
+                          'No products found',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Constants.textDark,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                          child: Text(
+                            searchQuery.isNotEmpty
+                                ? 'No products matching "$searchQuery"'
+                                : 'Try changing your filters or browse other categories',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Constants.textLight,
+                              height: 1.4,
                             ),
-                            Expanded(
-                              flex: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      productName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(height: 32),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            if (searchQuery.isNotEmpty) {
+                              setState(() {
+                                searchQuery = '';
+                                searchController.clear();
+                              });
+                            } else {
+                              setState(() {
+                                priceRange = RangeValues(0, 500);
+                              });
+                            }
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text('Clear Filters'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Constants.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    // Category header with product count
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${products.length} products found',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Constants.textLight,
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 5,
+                                ),
+                              ],
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: DropdownButton<String>(
+                              value: sortBy,
+                              underline: Container(),
+                              icon: Icon(Icons.keyboard_arrow_down, size: 16),
+                              isDense: true,
+                              items:
+                                  <String>[
+                                    'Popularity',
+                                    'Price: Low to High',
+                                    'Price: High to Low',
+                                    'Newest First',
+                                  ].map<DropdownMenuItem<String>>((
+                                    String value,
+                                  ) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value,
+                                        style: TextStyle(fontSize: 13),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (description.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 4.0,
-                                        ),
-                                        child: Text(
-                                          description,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    Spacer(),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                    );
+                                  }).toList(),
+                              onChanged: (String? newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    sortBy = newValue;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Product grid
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        itemCount: products.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.85,
+                            ),
+                        itemBuilder: (context, index) {
+                          final productData =
+                              products[index].data() as Map<String, dynamic>;
+                          final productId = products[index].id;
+                          final productName =
+                              productData['name'] ?? 'Unnamed Product';
+                          final productPrice =
+                              productData['price'] != null
+                                  ? productData['price'].toString()
+                                  : 'N/A';
+                          final imageUrl = productData['imageUrl'] ?? '';
+                          final description = productData['description'] ?? '';
+                          final unit = productData['unit'] ?? '';
+
+                          return Card(
+                            elevation: 3,
+                            shadowColor: Colors.black12,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                // Navigate to product detail
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Image container
+                                  Expanded(
+                                    flex: 6,
+                                    child: Stack(
                                       children: [
-                                        Text(
-                                          '₹$productPrice${unit.isNotEmpty ? '/$unit' : ''}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Constants.accentColor,
-                                          ),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder:
-                                                  (
-                                                    context,
-                                                  ) => SubscriptionDialog(
-                                                    productId: productId,
-                                                    productName: productName,
-                                                    productDescription:
-                                                        description,
-                                                    productPrice: double.parse(
-                                                      productPrice,
+                                        Positioned.fill(
+                                          child:
+                                              imageUrl.isNotEmpty
+                                                  ? Image.network(
+                                                    imageUrl,
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                  : Container(
+                                                    color: Colors.grey[200],
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.image,
+                                                        color: Colors.grey[400],
+                                                        size: 40,
+                                                      ),
                                                     ),
                                                   ),
-                                            );
-                                          },
-                                          child: Text('Subscribe'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.orange,
-                                          ),
                                         ),
-                                        InkWell(
-                                          onTap: () {
-                                            // Add to cart
-                                            _addToCart(
-                                              context,
-                                              productId,
-                                              productName,
-                                              productData,
-                                            );
-                                          },
+                                        // Add to cart button as overlay
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
                                           child: Container(
                                             padding: EdgeInsets.all(6),
                                             decoration: BoxDecoration(
-                                              color: Constants.accentColor,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(
-                                              Icons.add,
                                               color: Colors.white,
-                                              size: 18,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black12,
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                _addToCart(
+                                                  context,
+                                                  productId,
+                                                  productName,
+                                                  productData,
+                                                );
+                                              },
+                                              child: Icon(
+                                                Icons.add_shopping_cart,
+                                                size: 18,
+                                                color: Constants.primaryColor,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  // Product details container
+                                  Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          productName,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        SizedBox(height: 4),
+                                        if (description.isNotEmpty)
+                                          Text(
+                                            description,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Constants.textLight,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        SizedBox(height: 8),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '₹$productPrice${unit.isNotEmpty ? '/$unit' : ''}',
+                                              style: TextStyle(
+                                                color: Constants.primaryColor,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            // Subscribe icon button
+                                            GestureDetector(
+                                              onTap: () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder:
+                                                      (context) =>
+                                                          SubscriptionDialog(
+                                                            productId:
+                                                                productId,
+                                                            productName:
+                                                                productName,
+                                                            productDescription:
+                                                                description,
+                                                            productPrice:
+                                                                double.parse(
+                                                                  productPrice,
+                                                                ),
+                                                          ),
+                                                );
+                                              },
+                                              child: Container(
+                                                padding: EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Icon(
+                                                  Icons.repeat,
+                                                  size: 18,
+                                                  color: Colors.orange,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  void _showFilterDialog(BuildContext context) {
-    showModalBottomSheet(
+  // Show search bar dialog
+  void _showSearchBar() {
+    showDialog(
       context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Filter Products',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+      builder:
+          (context) => AlertDialog(
+            title: Text('Search Products'),
+            content: TextField(
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Enter product name or description',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              Divider(),
-              Text(
-                'Price Range',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              RangeSlider(
-                values: RangeValues(0, 100),
-                max: 500,
-                divisions: 10,
-                labels: RangeLabels('₹0', '₹100'),
-                onChanged: (RangeValues values) {
-                  // Update price range
+              onChanged: (value) {
+                // Close dialog and update search
+                if (value.isNotEmpty) {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    searchQuery = value;
+                    searchController.text = value;
+                  });
+                }
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
                 },
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Availability',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              CheckboxListTile(
-                title: Text('In Stock'),
-                value: true,
-                onChanged: (bool? value) {},
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      // Reset filters
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Reset'),
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Apply filters
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Apply'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Constants.accentColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ],
+                child: Text('Cancel'),
               ),
             ],
           ),
+    );
+  }
+
+  // Filter dialog with functionality
+  void _showFilterDialog(BuildContext context) {
+    // Create temporary variables to hold filter state
+    RangeValues tempPriceRange = priceRange;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: Offset(0, -5),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with title and close button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Constants.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.filter_list,
+                              color: Constants.primaryColor,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Filter Products',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Constants.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 8),
+                  Divider(),
+                  SizedBox(height: 8),
+
+                  // Price range filter
+                  Text(
+                    'Price Range',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Constants.textDark,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  RangeSlider(
+                    values: tempPriceRange,
+                    max: 500,
+                    divisions: 50,
+                    activeColor: Constants.primaryColor,
+                    inactiveColor: Constants.primaryColor.withOpacity(0.2),
+                    labels: RangeLabels(
+                      '₹${tempPriceRange.start.toInt()}',
+                      '₹${tempPriceRange.end.toInt()}',
+                    ),
+                    onChanged: (values) {
+                      setModalState(() {
+                        tempPriceRange = values;
+                      });
+                    },
+                  ),
+
+                  // Price range display
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '₹${tempPriceRange.start.toInt()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Constants.primaryColor,
+                          ),
+                        ),
+                        Text(
+                          '₹${tempPriceRange.end.toInt()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Constants.primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Filter buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempPriceRange = RangeValues(0, 500);
+                            });
+                          },
+                          child: Text('Reset'),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: Constants.primaryColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Apply filters
+                            setState(() {
+                              priceRange = tempPriceRange;
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          child: Text('Apply'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Constants.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
+  // Sort products based on selected sorting option
+  List<QueryDocumentSnapshot> _sortProducts(
+    List<QueryDocumentSnapshot> products,
+    String sortOption,
+  ) {
+    switch (sortOption) {
+      case 'Price: Low to High':
+        products.sort((a, b) {
+          final priceA = (a.data() as Map<String, dynamic>)['price'] ?? 0;
+          final priceB = (b.data() as Map<String, dynamic>)['price'] ?? 0;
+          return (priceA is num ? priceA : double.parse(priceA.toString()))
+              .compareTo(
+                priceB is num ? priceB : double.parse(priceB.toString()),
+              );
+        });
+        break;
+      case 'Price: High to Low':
+        products.sort((a, b) {
+          final priceA = (a.data() as Map<String, dynamic>)['price'] ?? 0;
+          final priceB = (b.data() as Map<String, dynamic>)['price'] ?? 0;
+          return (priceB is num ? priceB : double.parse(priceB.toString()))
+              .compareTo(
+                priceA is num ? priceA : double.parse(priceA.toString()),
+              );
+        });
+        break;
+      case 'Newest First':
+        products.sort((a, b) {
+          final dateA =
+              (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          final dateB =
+              (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+        break;
+      // For popularity (default) - you might want to implement your own logic
+      default:
+        // No sorting, or use a popularity field if available
+        break;
+    }
+    return products;
+  }
+
+  // Existing add to cart method
   void _addToCart(
     BuildContext context,
     String productId,
@@ -741,15 +1166,29 @@ class ProductsByCategoryPage extends StatelessWidget {
           'price': productData['price'],
           'quantity': 1,
           'imageUrl': productData['imageUrl'] ?? '',
-          'category': category,
+          'category': widget.category,
           'addedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true))
         .then((_) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('$productName added to cart'),
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '$productName added to cart',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               action: SnackBarAction(
                 label: 'VIEW CART',
                 textColor: Colors.white,
@@ -765,834 +1204,16 @@ class ProductsByCategoryPage extends StatelessWidget {
         })
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add to cart: $error')),
-          );
-        });
-  }
-}
-
-// Enhanced Cart page with modern UI
-class Cart extends StatefulWidget {
-  @override
-  _CartState createState() => _CartState();
-}
-
-class _CartState extends State<Cart> {
-  bool isLoading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Constants.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Constants.accentColor,
-        title: Text('My Cart', style: TextStyle(color: Constants.primaryColor)),
-        actions: [
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('cart').snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Container();
-              }
-              return IconButton(
-                icon: Icon(Icons.delete_outline, color: Constants.primaryColor),
-                onPressed: () {
-                  _showClearCartDialog();
-                },
-              );
-            },
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('cart').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading cart'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          final cartItems = snapshot.data!.docs;
-          if (cartItems.isEmpty) {
-            return _buildEmptyCart();
-          }
-
-          double totalAmount = 0;
-          for (var item in cartItems) {
-            final data = item.data() as Map<String, dynamic>;
-            final price =
-                data['price'] != null
-                    ? double.parse(data['price'].toString())
-                    : 0.0;
-            final quantity = data['quantity'] ?? 1;
-            totalAmount += price * quantity;
-          }
-
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: cartItems.length,
-                  itemBuilder: (context, index) {
-                    final item = cartItems[index];
-                    final data = item.data() as Map<String, dynamic>;
-                    final productId = item.id;
-                    final name = data['name'] ?? 'Unnamed Product';
-                    final price =
-                        data['price'] != null
-                            ? data['price'].toString()
-                            : 'N/A';
-                    final quantity = data['quantity'] ?? 1;
-                    final imageUrl = data['imageUrl'] ?? '';
-
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            // Product Image
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                width: 80,
-                                height: 80,
-                                child:
-                                    imageUrl.isNotEmpty
-                                        ? Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                        )
-                                        : Container(
-                                          color: Colors.grey[200],
-                                          child: Icon(
-                                            Icons.image,
-                                            color: Colors.grey[400],
-                                            size: 30,
-                                          ),
-                                        ),
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            // Product Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    '₹$price',
-                                    style: TextStyle(
-                                      color: Constants.accentColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  // Quantity controls
-                                  Row(
-                                    children: [
-                                      InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            productId,
-                                            quantity - 1,
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Icon(Icons.remove, size: 16),
-                                        ),
-                                      ),
-                                      Container(
-                                        margin: EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: Colors.grey[300]!,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          quantity.toString(),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            productId,
-                                            quantity + 1,
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Icon(Icons.add, size: 16),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Delete button
-                            IconButton(
-                              icon: Icon(
-                                Icons.delete_outline,
-                                color: Colors.red[400],
-                              ),
-                              onPressed: () {
-                                _removeFromCart(productId);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // Order summary and checkout
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      spreadRadius: 1,
-                      blurRadius: 10,
-                      offset: Offset(0, -5),
-                    ),
-                  ],
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Column(
-                  children: [
-                    // Order summary
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Items (${cartItems.length})',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Text(
-                          '₹${totalAmount.toStringAsFixed(2)}',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Delivery',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Text(
-                          totalAmount >= 500 ? 'FREE' : '₹40.00',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: totalAmount >= 500 ? Colors.green : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total Amount',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          '₹${(totalAmount + (totalAmount >= 500 ? 0 : 40)).toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Constants.accentColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    // Checkout button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed:
-                            isLoading
-                                ? null
-                                : () {
-                                  _proceedToCheckout();
-                                },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Constants.accentColor,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child:
-                            isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
-                                : Text(
-                                  'PROCEED TO CHECKOUT',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyCart() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.shopping_cart_outlined,
-            size: 100,
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Your cart is empty',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Looks like you haven\'t added\nanything to your cart yet',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-          ),
-          SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(Icons.shopping_bag_outlined),
-            label: Text('BROWSE PRODUCTS'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Constants.accentColor,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            SnackBar(
+              content: Text('Failed to add to cart: $error'),
+              backgroundColor: Constants.errorColor,
+              behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _updateQuantity(String productId, int newQuantity) {
-    if (newQuantity <= 0) {
-      _removeFromCart(productId);
-      return;
-    }
-
-    FirebaseFirestore.instance
-        .collection('cart')
-        .doc(productId)
-        .update({'quantity': newQuantity})
-        .catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update quantity: $error')),
           );
         });
-  }
-
-  void _removeFromCart(String productId) {
-    FirebaseFirestore.instance
-        .collection('cart')
-        .doc(productId)
-        .delete()
-        .catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to remove item: $error')),
-          );
-        });
-  }
-
-  void _showClearCartDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Clear Cart'),
-            content: Text(
-              'Are you sure you want to remove all items from your cart?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _clearCart();
-                },
-                child: Text('YES, CLEAR', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<void> _clearCart() async {
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance.collection('cart').get();
-      final batch = FirebaseFirestore.instance.batch();
-
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      await batch.commit();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to clear cart: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      throw error; // Rethrow the error to be caught by the calling function
-    }
-  }
-
-  void _proceedToCheckout() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      // Get current user
-      final User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw 'Please login to place order';
-      }
-
-      // Get user details from Firestore
-      final userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .get();
-
-      if (!userDoc.exists) {
-        throw 'User profile not found';
-      }
-
-      final userData = userDoc.data() ?? {};
-      final userEmail = currentUser.email ?? '';
-      final userName = userData['name'] ?? '';
-      final userPhone = userData['phone'] ?? '';
-
-      // Get cart items
-      QuerySnapshot cartSnapshot =
-          await FirebaseFirestore.instance.collection('cart').get();
-      if (cartSnapshot.docs.isEmpty) {
-        throw 'Cart is empty';
-      }
-
-      // Get user's pincode
-      final prefs = await SharedPreferences.getInstance();
-      final pinCode = prefs.getString('user_pin_code');
-      if (pinCode == null) {
-        throw 'Please set your delivery location';
-      }
-
-      // Prepare items array and calculate total
-      List<Map<String, dynamic>> items = [];
-      double totalAmount = 0;
-
-      for (var doc in cartSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final price =
-            data['price'] != null
-                ? double.parse(data['price'].toString())
-                : 0.0;
-        final quantity = data['quantity'] ?? 1;
-        totalAmount += price * quantity;
-
-        items.add({
-          'productId': doc.id,
-          'category': data['category'] ?? '',
-          'description': data['description'] ?? '',
-          'imageURL': data['imageUrl'] ?? null,
-          'name': data['name'] ?? '',
-          'price': price,
-          'quantity': quantity,
-          'stock': data['stock'] ?? 0,
-        });
-      }
-
-      // Calculate delivery charge
-      final deliveryCharge = totalAmount >= 500 ? 0 : 40;
-      final finalAmount = totalAmount + deliveryCharge;
-
-      // Generate order number
-      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-
-      // Create order document in Firestore
-      await FirebaseFirestore.instance.collection('orders').add({
-        // User Information
-        'userId': currentUser.uid,
-        'userEmail': userEmail,
-        'userName': userName,
-        'userPhone': userPhone,
-        'userPinCode': pinCode,
-
-        // Order Information
-        'orderNumber': orderNumber,
-        'timestamp': FieldValue.serverTimestamp(),
-        'orderDate': DateTime.now(),
-        'status': 'Processing',
-        'isActive': true,
-
-        // Items and Amount
-        'items': items,
-        'subtotal': totalAmount,
-        'deliveryCharge': deliveryCharge,
-        'total': finalAmount,
-
-        // Additional Information
-        'paymentMethod': 'Cash on Delivery',
-        'deliveryAddress': userData['address'] ?? '',
-        'notes': '',
-      });
-
-      // Clear cart after successful order
-      await _clearCart();
-
-      // Show success dialog
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder:
-              (context) => AlertDialog(
-                title: Text('Order Placed Successfully'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 60),
-                    SizedBox(height: 16),
-                    Text(
-                      'Your order #$orderNumber has been placed successfully!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Constants.accentColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'You can track your order in the Orders section.',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      Navigator.of(context).pop(); // Return to previous screen
-                    },
-                    child: Text(
-                      'OK',
-                      style: TextStyle(color: Constants.accentColor),
-                    ),
-                  ),
-                ],
-              ),
-        );
-      }
-    } catch (error) {
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to place order: $error'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
-}
-
-// Order History Page
-class OrderHistoryPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'My Orders',
-          style: TextStyle(color: Constants.primaryColor),
-        ),
-        backgroundColor: Constants.accentColor,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream:
-            FirebaseFirestore.instance
-                .collection('orders')
-                .orderBy('orderedAt', descending: true)
-                .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading orders'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          final orders = snapshot.data!.docs;
-          if (orders.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No orders yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Your order history will appear here',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final orderData = orders[index].data() as Map<String, dynamic>;
-              final orderId = orders[index].id;
-              final orderDate =
-                  orderData['orderedAt'] != null
-                      ? (orderData['orderedAt'] as Timestamp).toDate()
-                      : DateTime.now();
-              final totalAmount = orderData['totalAmount'] ?? 0.0;
-              final status = orderData['status'] ?? 'Processing';
-
-              return Card(
-                margin: EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-                child: InkWell(
-                  onTap: () {
-                    // Navigate to order details
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Order #${orderId.substring(0, 8)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(status).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status,
-                                style: TextStyle(
-                                  color: _getStatusColor(status),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Date: ${_formatDate(orderDate)}',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Divider(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total Amount:',
-                              style: TextStyle(color: Colors.grey[700]),
-                            ),
-                            Text(
-                              '₹${totalAmount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Constants.accentColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton(
-                              onPressed: () {
-                                // View order details
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Constants.accentColor),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: Text('View Details'),
-                            ),
-                            SizedBox(width: 8),
-                            if (status == "Delivered")
-                              ElevatedButton(
-                                onPressed: () {
-                                  // Reorder
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Constants.accentColor,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text('Reorder'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'processing':
-        return Colors.orange;
-      case 'shipped':
-        return Colors.blue;
-      case 'delivered':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -1605,54 +1226,75 @@ class CategoriesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pinCode == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_off, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Location not set',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Please set your PIN code to view available products',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Show PIN code dialog when user clicks button
-                final HomeState? homeState =
-                    context.findAncestorStateOfType<HomeState>();
-                if (homeState != null) {
-                  homeState._showPinCodeDialog();
-                }
-              },
-              icon: Icon(Icons.location_on),
-              label: Text('SET PIN CODE'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Constants.accentColor,
-                foregroundColor: Constants.primaryColor,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+      return Container(
+        decoration: BoxDecoration(color: Constants.backgroundColor),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Constants.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.location_off_rounded,
+                  size: 80,
+                  color: Constants.primaryColor,
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 24),
+              Text(
+                'Location not set',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Constants.textDark,
+                ),
+              ),
+              SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Text(
+                  'Please set your PIN code to view available products in your area',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Constants.textLight,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final HomeState? homeState =
+                      context.findAncestorStateOfType<HomeState>();
+                  if (homeState != null) {
+                    homeState._showPinCodeDialog();
+                  }
+                },
+                icon: Icon(Icons.location_on),
+                label: Text('SET YOUR LOCATION'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Constants.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     Query categoriesQuery = FirebaseFirestore.instance.collection('categories');
     print(categoriesQuery.snapshots().first);
-    // Add location filtering if needed
-    // if (pinCode != null) {
-    //   categoriesQuery = categoriesQuery.where('pinCode', arrayContains: pinCode);
-    // }
 
     return Scaffold(
       body: NestedScrollView(
@@ -1664,21 +1306,123 @@ class CategoriesList extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Products and Categories",
-                      style: TextStyle(
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Constants.primaryColor,
+                            Constants.primaryColor.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Constants.primaryColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: Colors.white.withOpacity(0.9),
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Delivering to PIN: $pinCode",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Spacer(),
+                              InkWell(
+                                onTap: () {
+                                  final HomeState? homeState =
+                                      context
+                                          .findAncestorStateOfType<HomeState>();
+                                  if (homeState != null) {
+                                    homeState._showPinCodeDialog();
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(
+                                    "Change",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            "Fresh Dairy Products",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            "Delivered to your doorstep",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Products available for delivery to PIN: $pinCode",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 24),
                     _buildFeaturedProducts(),
+
+                    Padding(
+                      padding: const EdgeInsets.only(top: 24.0, bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Constants.primaryColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Categories",
+                            style: TextStyle(
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold,
+                              color: Constants.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1692,7 +1436,9 @@ class CategoriesList extends StatelessWidget {
               return Center(child: Text('Error loading categories'));
             }
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return Center(
+                child: CircularProgressIndicator(color: Constants.primaryColor),
+              );
             }
             final categories = snapshot.data!.docs;
             if (categories.isEmpty) {
@@ -1700,36 +1446,55 @@ class CategoriesList extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.category_outlined,
-                      size: 80,
-                      color: Colors.grey[400],
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Constants.primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.category_outlined,
+                        size: 80,
+                        color: Constants.primaryColor,
+                      ),
                     ),
-                    SizedBox(height: 16),
+                    SizedBox(height: 24),
                     Text(
-                      'No categories available in your area',
-                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                      'No categories available',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Constants.textDark,
+                      ),
                     ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
+                    SizedBox(height: 8),
+                    Text(
+                      'Try changing your location',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Constants.textLight,
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton.icon(
                       onPressed: () {
-                        // Show PIN code dialog
                         final HomeState? homeState =
                             context.findAncestorStateOfType<HomeState>();
                         if (homeState != null) {
                           homeState._showPinCodeDialog();
                         }
                       },
-                      child: Text('Change Location'),
+                      icon: Icon(Icons.refresh),
+                      label: Text('Change Location'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Constants.accentColor,
-                        foregroundColor: Constants.primaryColor,
+                        backgroundColor: Constants.primaryColor,
+                        foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
@@ -1737,11 +1502,12 @@ class CategoriesList extends StatelessWidget {
                 ),
               );
             }
+
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: GridView.builder(
                 itemCount: categories.length,
-                padding: EdgeInsets.only(top: 16, bottom: 70),
+                padding: EdgeInsets.only(top: 8, bottom: 80),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
@@ -1758,6 +1524,7 @@ class CategoriesList extends StatelessWidget {
 
                   return Card(
                     elevation: 2,
+                    shadowColor: Colors.black26,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1775,11 +1542,9 @@ class CategoriesList extends StatelessWidget {
                           ),
                         );
                       },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      child: Stack(
                         children: [
-                          Expanded(
-                            flex: 3,
+                          Positioned.fill(
                             child:
                                 imageUrl.isNotEmpty
                                     ? Image.network(imageUrl, fit: BoxFit.cover)
@@ -1792,10 +1557,27 @@ class CategoriesList extends StatelessWidget {
                                       ),
                                     ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.7),
+                                  ],
+                                  stops: [0.6, 1.0],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(12),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1804,20 +1586,23 @@ class CategoriesList extends StatelessWidget {
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
+                                      color: Colors.white,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  SizedBox(height: 4),
                                   if (categoryDescription.isNotEmpty)
-                                    Text(
-                                      categoryDescription,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Text(
+                                        categoryDescription,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                 ],
                               ),
@@ -1837,115 +1622,188 @@ class CategoriesList extends StatelessWidget {
   }
 
   Widget _buildFeaturedProducts() {
-    return Container(
-      height: 180,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('products').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError ||
-              !snapshot.hasData ||
-              snapshot.data!.docs.isEmpty) {
-            return Container(); // No featured products
-          }
-
-          final products = snapshot.data!.docs;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  "Featured Products",
-                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Constants.primaryColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              "Featured Products",
+              style: TextStyle(
+                fontSize: 20.0,
+                fontWeight: FontWeight.bold,
+                color: Constants.textDark,
+              ),
+            ),
+            Spacer(),
+            TextButton(
+              onPressed: () {
+                // Navigate to all products
+              },
+              child: Text(
+                "See All",
+                style: TextStyle(
+                  color: Constants.primaryColor,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              Expanded(
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final productData =
-                        products[index].data() as Map<String, dynamic>;
-                    final productName =
-                        productData['name'] ?? 'Unnamed Product';
-                    final productPrice =
-                        productData['price'] != null
-                            ? productData['price'].toString()
-                            : 'N/A';
-                    final imageUrl = productData['imageUrl'] ?? '';
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Container(
+          height: 180,
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('products')
+                    .limit(10)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError ||
+                  !snapshot.hasData ||
+                  snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Text(
+                    "No featured products available",
+                    style: TextStyle(color: Constants.textLight),
+                  ),
+                );
+              }
 
-                    return Container(
-                      width: 140,
-                      margin: EdgeInsets.only(right: 12),
-                      child: Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            // Navigate to product detail
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child:
-                                    imageUrl.isNotEmpty
-                                        ? Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity,
-                                        )
-                                        : Container(
-                                          color: Colors.grey[200],
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.image,
-                                              color: Colors.grey[400],
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: Constants.primaryColor,
+                  ),
+                );
+              }
+
+              final products = snapshot.data!.docs;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final productData =
+                      products[index].data() as Map<String, dynamic>;
+                  final productName = productData['name'] ?? 'Unnamed Product';
+                  final productPrice =
+                      productData['price'] != null
+                          ? productData['price'].toString()
+                          : 'N/A';
+                  final imageUrl = productData['imageUrl'] ?? '';
+
+                  return Container(
+                    width: 160,
+                    margin: EdgeInsets.only(right: 16),
+                    child: Card(
+                      elevation: 3,
+                      shadowColor: Colors.black12,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () {
+                          // Navigate to product detail
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child:
+                                        imageUrl.isNotEmpty
+                                            ? Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.cover,
+                                            )
+                                            : Container(
+                                              color: Colors.grey[200],
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.image,
+                                                  color: Colors.grey[400],
+                                                  size: 40,
+                                                ),
+                                              ),
                                             ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
                                           ),
-                                        ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      productName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                        ],
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      '₹$productPrice',
-                                      style: TextStyle(
-                                        color: Constants.accentColor,
-                                        fontWeight: FontWeight.bold,
+                                      child: Icon(
+                                        Icons.add_shopping_cart,
+                                        size: 18,
+                                        color: Constants.primaryColor,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    productName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '₹$productPrice',
+                                    style: TextStyle(
+                                      color: Constants.accentColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

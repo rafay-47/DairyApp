@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dairyapp/Screens/AdminOrders.dart';
+import 'AdminSubscriptionsPage.dart';
 
 class AdminHomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -196,38 +197,38 @@ class _AdminHomePageState extends State<AdminHomePage> {
       key: _scaffoldKey,
       backgroundColor: Constants.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Constants.cardColor,
-        elevation: 0,
+        backgroundColor: Constants.primaryColor,
+        elevation: 2,
         title: const Text(
           'Admin Dashboard',
-          style: TextStyle(
-            color: Constants.textDark,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Constants.textDark),
+          icon: const Icon(Icons.menu, color: Colors.white),
           onPressed: () {
             _scaffoldKey.currentState?.openDrawer();
           },
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Constants.textDark),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _fetchDashboardData,
           ),
           IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Constants.textDark,
-            ),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
             onPressed: () {},
           ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            child: const CircleAvatar(
-              backgroundColor: Constants.accentColor,
-              child: Text('AD', style: TextStyle(color: Colors.white)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: CircleAvatar(
+              backgroundColor: Colors.white.withOpacity(0.2),
+              child: const Text(
+                'AD',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ],
@@ -350,6 +351,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
               context,
               MaterialPageRoute(builder: (context) => AdminOrders()),
             );
+          } else if (index == 6) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AdminSubscriptionsPage()),
+            );
           }
         });
       },
@@ -357,21 +363,32 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildComingSoon() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.engineering, size: 80, color: Constants.accentColor),
-          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Constants.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Icon(
+              Icons.construction,
+              size: 80,
+              color: Constants.primaryColor,
+            ),
+          ),
+          SizedBox(height: 24),
           Text(
             'Coming Soon',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Constants.textDark,
+              color: Constants.primaryColor,
             ),
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 16),
           Text(
             'This feature is under development',
             style: TextStyle(fontSize: 16, color: Constants.textLight),
@@ -406,6 +423,46 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
             const SizedBox(height: 20),
             _buildSubscriptionSummary(),
+            const SizedBox(height: 20),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminSubscriptionsPage(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.subscriptions,
+                        size: 48,
+                        color: Constants.accentColor,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Subscription Management',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

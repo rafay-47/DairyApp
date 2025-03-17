@@ -1,7 +1,7 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:dairyapp/constants.dart';
 
 String name = ' ';
 String surname = ' ', email = ' ', mobile = ' ', address = ' ';
@@ -15,7 +15,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-
   late DocumentSnapshot snapshot;
 
   void getData() async {
@@ -47,125 +46,148 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            height: 220.0,
-            width: MediaQuery.of(context).size.width-90.0,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('images/UserProfile.png'),
-                fit: BoxFit.fill
-              )
-            ),
-          ),
-          SizedBox(
-            height: 10.0,
-          ),
-          Column(
+      backgroundColor: Constants.backgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                padding: EdgeInsets.only(left: 40.0),
-                child: Text(
-                  name.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 40.0,
-                      color: Color.fromRGBO(22, 102, 225, 1),
-                      fontWeight: FontWeight.bold),
+                height: 220.0,
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 150,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Constants.primaryColor,
+                            Constants.accentColor,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(30),
+                          bottomRight: Radius.circular(30),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundImage: AssetImage(
+                              'images/UserProfile.png',
+                            ),
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.only(left: 40.0),
-                child: Text(
-                  surname.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 40.0,
-                      color: Color.fromRGBO(22, 102, 225, 1),
-                      fontWeight: FontWeight.bold),
+              SizedBox(height: 20),
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      "${name.toUpperCase()} ${surname.toUpperCase()}",
+                      style: TextStyle(
+                        fontSize: 26.0,
+                        color: Constants.textDark,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      "@${name.toLowerCase()}",
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        color: Constants.textLight,
+                      ),
+                    ),
+                  ],
                 ),
-              )
+              ),
+              SizedBox(height: 30),
+              // Profile info cards
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ListView(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildProfileInfoTile(Icons.email, "Email", email),
+                      Divider(height: 1, thickness: 1, indent: 70),
+                      _buildProfileInfoTile(Icons.phone, "Phone", "+91$mobile"),
+                      Divider(height: 1, thickness: 1, indent: 70),
+                      _buildProfileInfoTile(
+                        Icons.location_on,
+                        "Location",
+                        address,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          SizedBox(
-            height: 10.0,
-          ),
-          Container(
-            width: MediaQuery.of(context).size.width - 50.0,
-            decoration: BoxDecoration(
-                border: Border.all(color: Color.fromRGBO(22, 102, 225, 1))),
-          ),
-          SizedBox(
-            height: 20.0,
-          ),
-          Container(
-            padding: EdgeInsets.only(left: 40.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  Icons.phone,
-                  color: Color.fromRGBO(22, 102, 225, 1),
-                ),
-                SizedBox(
-                  width: 15.0,
-                ),
-                Text(
-                  '+91$mobile',
-                  style: TextStyle(color: Colors.black, fontSize: 24.0),
-                )
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 10.0,
-          ),
-          Container(
-            padding: EdgeInsets.only(left: 40.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  Icons.mail,
-                  color: Color.fromRGBO(22, 102, 225, 1),
-                ),
-                SizedBox(
-                  width: 15.0,
-                ),
-                Text(
-                  email,
-                  style: TextStyle(color: Colors.black, fontSize: 24.0),
-                )
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 10.0,
-          ),
-          Container(
-            padding: EdgeInsets.only(left: 40.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  Icons.location_on,
-                  color: Color.fromRGBO(22, 102, 225, 1),
-                ),
-                SizedBox(
-                  width: 15.0,
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width - 100.0,
-                  child: Text((address==' ')?'--Not Added--':address,
-                      maxLines: 2,
-                      style: TextStyle(color: Colors.black, fontSize: 24.0)),
-                )
-              ],
-            ),
-          )
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileInfoTile(IconData icon, String title, String value) {
+    return ListTile(
+      leading: Container(
+        padding: EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Constants.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Constants.primaryColor),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(color: Constants.textLight, fontSize: 14),
+      ),
+      subtitle: Text(
+        value,
+        style: TextStyle(
+          color: Constants.textDark,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

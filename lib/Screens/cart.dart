@@ -1,236 +1,13 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:flutter/material.dart';
-// import 'package:razorpay_flutter/razorpay_flutter.dart';
-// import 'package:toast/toast.dart';
-
-// late Map<dynamic, dynamic> cartProduct;
-// late List<dynamic> cartNameList;
-// late List<dynamic> cartQuantityList;
-// late DocumentSnapshot snapshotprice;
-// late DocumentSnapshot snapuser;
-// int sum = 0;
-
-// class Cart extends StatefulWidget {
-//   const Cart({super.key});
-
-//   @override
-//   _CartState createState() => _CartState();
-// }
-
-// class _CartState extends State<Cart> {
-//   late Razorpay razor;
-
-//   Future<void> getAddOnData() async {
-//     final User user = FirebaseAuth.instance.currentUser!;
-//     final String uid = user.uid.toString();
-//     DocumentSnapshot snapshot =
-//         await FirebaseFirestore.instance.collection('cart').doc(uid).get();
-//     snapshotprice =
-//         await FirebaseFirestore.instance.collection('price').doc('1').get();
-//     snapuser =
-//         await FirebaseFirestore.instance.collection('users').doc(uid).get();
-//     setState(() {
-//       cartProduct = (snapshot.data() as Map<String, dynamic>)['product'];
-//       cartNameList = cartProduct.keys.toList();
-//       cartQuantityList = cartProduct.values.toList();
-//       sum = (snapuser.data() as Map<String, dynamic>)['CartValue'];
-//     });
-//   }
-
-//   void updatecartvalue(var index) {
-//     String str = cartNameList[index];
-//     String str2 = cartQuantityList[index];
-//     int p = int.parse((snapshotprice.data as Map<String, dynamic>)[str]);
-//     int q = int.parse(str2);
-//     setState(() {
-//       sum = sum - (p * q);
-//     });
-//   }
-
-//   Widget displayData() {
-//     return ListView.builder(
-//       itemCount: cartProduct.length,
-//       itemBuilder: (context, index) {
-//         return Dismissible(
-//           background: Container(color: Color.fromRGBO(22, 102, 225, 1)),
-//           key: UniqueKey(),
-//           child: Card(
-//             elevation: 10.0,
-//             child: ListTile(
-//               title: Text('${cartNameList[index]}'),
-//               trailing: Text('${cartQuantityList[index]}'),
-//             ),
-//           ),
-//           onDismissed: (direction) {
-//             Toast.show(
-//               "${cartNameList[index]} removed form cart ",
-//               duration: Toast.lengthShort,
-//               gravity: Toast.bottom,
-//               backgroundColor: Colors.black,
-//               webTexColor: Colors.white,
-//             );
-//             setState(() {
-//               updatecartvalue(index);
-//               updateCart(index);
-//             });
-//           },
-//         );
-//       },
-//     );
-//   }
-
-//   Future<void> updateCart(var index) async {
-//     final User user = FirebaseAuth.instance.currentUser!;
-//     final String uid = user.uid.toString();
-//     setState(() {
-//       cartProduct.remove('${cartNameList[index]}');
-//       cartNameList.removeAt(index);
-//       cartQuantityList.removeAt(index);
-//       FirebaseFirestore.instance.collection('cart').doc(uid).update({
-//         'product': cartProduct,
-//       });
-//       FirebaseFirestore.instance.collection('users').doc(uid).update({
-//         'product': cartProduct,
-//       });
-//       FirebaseFirestore.instance.collection('users').doc(uid).update({
-//         'CartValue': sum,
-//       });
-//     });
-//   }
-
-//   void openCheckout() {
-//     var options = {
-//       'key': 'rzp_test_0sjqCKCoIjJr2F',
-//       'amount': sum * 100,
-//       'name': 'Dairy App',
-//       'external': {
-//         'wallets': ['paytm'],
-//       },
-//     };
-
-//     try {
-//       razor.open(options);
-//     } catch (e) {
-//       debugPrint(e as String?);
-//     }
-//   }
-
-//   void handlerPaymentSuccess(PaymentSuccessResponse response) {
-//     Toast.show('Success${response.paymentId}');
-//   }
-
-//   void handlerPaymentError(PaymentFailureResponse response) {
-//     Toast.show('Error${response.code} . ${response.message}');
-//   }
-
-//   void handlerPaymentExternal(ExternalWalletResponse response) {
-//     Toast.show('External Wallet${response.walletName}');
-//   }
-
-//   @override
-//   void initState() {
-//     // TODO: implement initState
-//     super.initState();
-//     razor = Razorpay();
-//     razor.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlerPaymentSuccess);
-//     razor.on(Razorpay.EVENT_PAYMENT_ERROR, handlerPaymentError);
-//     razor.on(Razorpay.EVENT_EXTERNAL_WALLET, handlerPaymentExternal);
-//     getAddOnData();
-//   }
-
-//   @override
-//   void dispose() {
-//     // TODO: implement dispose
-//     super.dispose();
-//     razor.clear();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       decoration: BoxDecoration(
-//         image: DecorationImage(
-//           image: AssetImage('images/cart.png'),
-//           fit: BoxFit.fill,
-//         ),
-//       ),
-//       child: Scaffold(
-//         backgroundColor: Colors.transparent,
-//         appBar: AppBar(
-//           leading: Container(),
-//           elevation: 0,
-//           backgroundColor: Colors.white,
-//           title: Text(
-//             '🛒 Cart 🛒',
-//             style: TextStyle(
-//               fontSize: 30.0,
-//               color: Color.fromRGBO(22, 102, 225, 1),
-//               fontWeight: FontWeight.bold,
-//             ),
-//           ),
-//           centerTitle: true,
-//         ),
-//         body: Column(
-//           children: <Widget>[
-//             Container(
-//               child: Text(
-//                 'Your Orders',
-//                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-//               ),
-//             ),
-//             SizedBox(height: 10.0),
-//             Container(
-//               padding: EdgeInsets.only(
-//                 left: 30.0,
-//                 right: 30.0,
-//                 bottom: 20.0,
-//                 top: 10.0,
-//               ),
-//               child: Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                 children: <Widget>[Text('Product'), Text('Quantity')],
-//               ),
-//             ),
-//             Container(
-//               color: Colors.grey,
-//               width: MediaQuery.of(context).size.width,
-//               height: 350.0,
-//               child: displayData(),
-//             ),
-//             SizedBox(height: 10.0),
-//             Container(
-//               padding: EdgeInsets.all(20.0),
-//               child: Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                 children: <Widget>[Text('Total Cart Value'), Text('₹ $sum /-')],
-//               ),
-//             ),
-//             SizedBox(
-//               width: MediaQuery.of(context).size.width - 200.0,
-//               child: MaterialButton(
-//                 shape: RoundedRectangleBorder(
-//                   borderRadius: BorderRadius.circular(22.0),
-//                 ),
-//                 color: Color.fromRGBO(22, 102, 225, 1),
-//                 elevation: 10.0,
-//                 child: Text('Buy Now', style: TextStyle(color: Colors.white)),
-//                 onPressed: () {
-//                   openCheckout();
-//                 },
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Constants.dart';
-
+import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:toast/toast.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Enhanced Cart page with modern UI
 class Cart extends StatefulWidget {
@@ -240,6 +17,272 @@ class Cart extends StatefulWidget {
 
 class _CartState extends State<Cart> {
   bool isLoading = false;
+  double sum = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize Stripe - this should ideally be done in your app initialization
+    // but we're doing it here for simplicity
+    stripe.Stripe.publishableKey =
+        'pk_test_51OuuwVP0XD6u4TvYIUtwCffNiD1ZpOaKxKejORfDqAPjS6KSrwUg3qrd8jyrzYtQW6B6DJG2zScHPurSvn5EA7o500bOPE7N92';
+    // No need to attach listeners as in Razorpay
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Initialize Toast here when context is fully ready
+    ToastContext().init(context);
+  }
+
+  Future<void> makeStripePayment() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Calculate amount in cents (Stripe requires amount in smallest currency unit)
+      final int amount = (sum * 100).toInt();
+
+      // Get the secret key from environment variables
+      final secretKey =
+          dotenv.env['STRIPE_SECRET_KEY'] ??
+          'sk_test_51OuuwVP0XD6u4TvYAOHTI6hGBzvkk596TUI5PLxmb79l7G8Q3xJR5GD3bwueOsejljjNgrrMqyR5OYyHI6N4Pcor00XXSrwjmU';
+
+      // 1. Create payment intent on the server - typically this would be a call to your backend
+      // For testing, we'll simulate this with a direct API call
+      // In production, you should NEVER expose your secret key in the app
+      final response = await http.post(
+        Uri.parse('https://api.stripe.com/v1/payment_intents'),
+        headers: {
+          'Authorization': 'Bearer $secretKey',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'amount': amount.toString(),
+          'currency': 'inr',
+          'payment_method_types[]': 'card',
+        },
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      // 2. Initialize payment sheet
+      await stripe.Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: stripe.SetupPaymentSheetParameters(
+          paymentIntentClientSecret: jsonResponse['client_secret'],
+          merchantDisplayName: 'Dairy App',
+          style: ThemeMode.light,
+        ),
+      );
+
+      // 3. Present payment sheet
+      await stripe.Stripe.instance.presentPaymentSheet();
+
+      // If we reach here, payment was successful
+      handlePaymentSuccess();
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+
+      // Handle payment errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void handlePaymentSuccess() {
+    setState(() {
+      isLoading = false;
+    });
+
+    // Show success toast with proper parameters
+    Toast.show(
+      'Payment Successful!',
+      duration: Toast.lengthShort,
+      gravity: Toast.bottom,
+    );
+
+    // Process the order in Firebase
+    _processOrderInFirebase();
+  }
+
+  Future<void> _processOrderInFirebase() async {
+    try {
+      // Get current user
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw 'Please login to place order';
+      }
+
+      // Get user details from Firestore
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get();
+
+      if (!userDoc.exists) {
+        throw 'User profile not found';
+      }
+
+      final userData = userDoc.data() ?? {};
+      final userEmail = currentUser.email ?? '';
+      final userName = userData['name'] ?? '';
+      final userPhone = userData['phone'] ?? '';
+
+      // Get cart items
+      QuerySnapshot cartSnapshot =
+          await FirebaseFirestore.instance.collection('cart').get();
+      if (cartSnapshot.docs.isEmpty) {
+        throw 'Cart is empty';
+      }
+
+      // Get user's pincode
+      final prefs = await SharedPreferences.getInstance();
+      final pinCode = prefs.getString('user_pin_code');
+      if (pinCode == null) {
+        throw 'Please set your delivery location';
+      }
+
+      // Prepare items array and calculate total
+      List<Map<String, dynamic>> items = [];
+      double totalAmount = 0;
+
+      for (var doc in cartSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final price =
+            data['price'] != null
+                ? double.parse(data['price'].toString())
+                : 0.0;
+        final quantity = data['quantity'] ?? 1;
+        totalAmount += price * quantity;
+
+        items.add({
+          'productId': doc.id,
+          'category': data['category'] ?? '',
+          'description': data['description'] ?? '',
+          'imageURL': data['imageUrl'] ?? null,
+          'name': data['name'] ?? '',
+          'price': price,
+          'quantity': quantity,
+          'stock': data['stock'] ?? 0,
+        });
+      }
+
+      // Calculate delivery charge
+      final deliveryCharge = totalAmount >= 500 ? 0 : 40;
+      final finalAmount = totalAmount + deliveryCharge;
+
+      // Generate order number
+      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+
+      // Create order document in Firestore
+      await FirebaseFirestore.instance.collection('orders').add({
+        // User Information
+        'userId': currentUser.uid,
+        'userEmail': userEmail,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userPinCode': pinCode,
+
+        // Order Information
+        'orderNumber': orderNumber,
+        'timestamp': FieldValue.serverTimestamp(),
+        'orderDate': DateTime.now(),
+        'status': 'Processing',
+        'isActive': true,
+
+        // Items and Amount
+        'items': items,
+        'subtotal': totalAmount,
+        'deliveryCharge': deliveryCharge,
+        'total': finalAmount,
+
+        // Additional Information
+        'paymentMethod': 'Stripe',
+        'paymentStatus': 'Paid',
+        'deliveryAddress': userData['address'] ?? '',
+        'notes': '',
+      });
+
+      // Clear cart after successful order
+      _clearCart();
+
+      // Show success dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Order Placed Successfully'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 60),
+                    SizedBox(height: 16),
+                    Text(
+                      'Your order #$orderNumber has been placed successfully!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Constants.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'You can track your order in the Orders section.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      Navigator.of(context).pop(); // Return to previous screen
+                    },
+                    child: Text(
+                      'OK',
+                      style: TextStyle(color: Constants.accentColor),
+                    ),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (error) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process order: $error'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    // No need to clear Razorpay
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -289,6 +332,9 @@ class _CartState extends State<Cart> {
             final quantity = data['quantity'] ?? 1;
             totalAmount += price * quantity;
           }
+
+          // Update the sum value for Stripe
+          sum = totalAmount + (totalAmount >= 500 ? 0 : 40);
 
           return Column(
             children: [
@@ -516,7 +562,7 @@ class _CartState extends State<Cart> {
                       ],
                     ),
                     SizedBox(height: 16),
-                    // Checkout button
+                    // Checkout button - changed to use Stripe
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -524,7 +570,7 @@ class _CartState extends State<Cart> {
                             isLoading
                                 ? null
                                 : () {
-                                  _proceedToCheckout();
+                                  makeStripePayment();
                                 },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Constants.accentColor,
@@ -671,59 +717,5 @@ class _CartState extends State<Cart> {
             SnackBar(content: Text('Failed to clear cart: $error')),
           );
         });
-  }
-
-  void _proceedToCheckout() {
-    setState(() {
-      isLoading = true;
-    });
-
-    // Simulate checkout process
-    Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        isLoading = false;
-      });
-
-      // Show order confirmation
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Text('Order Placed Successfully'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 60),
-                  SizedBox(height: 16),
-                  Text(
-                    'Your order has been placed successfully!',
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'You can track your order in the Orders section.',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // Clear cart after successful order
-                    _clearCart();
-                    // Navigate back to home
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    'OK',
-                    style: TextStyle(color: Constants.accentColor),
-                  ),
-                ),
-              ],
-            ),
-      );
-    });
   }
 }

@@ -7,6 +7,9 @@ import 'package:dairyapp/authentication/auth_provider.dart';
 import 'package:dairyapp/authentication/root.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:toast/toast.dart';
 import 'Animations/FadeAnimation.dart';
 import 'Screens/register.dart';
 import 'firebase_options.dart';
@@ -14,30 +17,92 @@ import 'constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+
+  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  runApp(
-    AuthProvider(
+  // Initialize Stripe with key from .env
+  final stripePublishableKey =
+      dotenv.env['STRIPE_PUBLISHABLE_KEY'] ??
+      'pk_test_51OuuwVP0XD6u4TvYIUtwCffNiD1ZpOaKxKejORfDqAPjS6KSrwUg3qrd8jyrzYtQW6B6DJG2zScHPurSvn5EA7o500bOPE7N92';
+  stripe.Stripe.publishableKey = stripePublishableKey;
+
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // Initialize Toast context once the app is running and context is available
+    ToastContext().init(context);
+
+    return AuthProvider(
       auth: Auth(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Dairy App',
         home: rootpage(),
         theme: ThemeData(
-          fontFamily: 'Varela',
+          fontFamily: 'Poppins',
           primaryColor: Constants.primaryColor,
           colorScheme: ColorScheme.fromSwatch().copyWith(
+            primary: Constants.primaryColor,
             secondary: Constants.accentColor,
+            background: Constants.backgroundColor,
+            error: Constants.errorColor,
           ),
-          scaffoldBackgroundColor: Constants.backgroundColor,
+          appBarTheme: AppBarTheme(
+            elevation: 0,
+            backgroundColor: Constants.primaryColor,
+            titleTextStyle: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              color: Colors.white,
+            ),
+            iconTheme: IconThemeData(color: Colors.white),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Constants.accentColor,
+              foregroundColor: Colors.white,
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+            ),
+          ),
+          cardTheme: CardTheme(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          ),
           textTheme: TextTheme(
-            bodyLarge: TextStyle(color: Constants.accentColor),
-            bodyMedium: TextStyle(color: Constants.accentColor),
+            displayLarge: TextStyle(
+              color: Constants.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+            displayMedium: TextStyle(
+              color: Constants.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+            displaySmall: TextStyle(
+              color: Constants.textDark,
+              fontWeight: FontWeight.w600,
+            ),
+            bodyLarge: TextStyle(color: Constants.textDark),
+            bodyMedium: TextStyle(color: Constants.textDark),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class LoginPage extends StatefulWidget {
@@ -141,39 +206,40 @@ class LoginState extends State<LoginPage> {
               FadeAnimation(
                 1.8,
                 Center(
-                  child: SizedBox(
-                    width: 180.0,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Constants.secondaryColor,
-                        elevation: 5.0,
-                        fixedSize: Size(180.0, 44.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(22.0),
-                        ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Constants.secondaryColor,
+                      elevation: 5.0,
+                      minimumSize: Size(180.0, 44.0),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 10.0,
                       ),
-
-                      onPressed:
-                          isLoading
-                              ? null
-                              : () {
-                                if (_formkey.currentState!.validate()) {
-                                  signIn();
-                                }
-                              },
-                      child:
-                          isLoading
-                              ? CircularProgressIndicator(
-                                color: Constants.primaryColor,
-                              )
-                              : Text(
-                                'Login',
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  color: Constants.primaryColor,
-                                ),
-                              ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22.0),
+                      ),
                     ),
+                    onPressed:
+                        isLoading
+                            ? null
+                            : () {
+                              if (_formkey.currentState!.validate()) {
+                                signIn();
+                              }
+                            },
+                    child:
+                        isLoading
+                            ? CircularProgressIndicator(
+                              color: Constants.primaryColor,
+                            )
+                            : Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.w600,
+                                color: Constants.primaryColor,
+                              ),
+                            ),
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:dairyapp/Screens/feedback.dart';
 import 'package:dairyapp/authentication/auth.dart';
 import 'package:dairyapp/authentication/auth_provider.dart';
 import 'package:dairyapp/main.dart';
+import 'package:dairyapp/constants.dart';
 
 class Settings extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -66,66 +67,7 @@ class _SettingsState extends State<Settings> {
                 ),
               ),
             ),
-            Container(
-              height: 70.0,
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(color: Colors.white),
-              child: Card(
-                elevation: 4,
-                child: Row(
-                  children: <Widget>[
-                    SizedBox(width: 10.0),
-                    Icon(Icons.map),
-                    TextButton(
-                      child: Text('Visit us', style: TextStyle(fontSize: 18.0)),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              height: 70.0,
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(color: Colors.white),
-              child: Card(
-                elevation: 4,
-                child: Row(
-                  children: <Widget>[
-                    SizedBox(width: 10.0),
-                    Icon(Icons.android),
-                    TextButton(
-                      child: Text(
-                        'Developers',
-                        style: TextStyle(fontSize: 18.0),
-                      ),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              height: 70.0,
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(color: Colors.white),
-              child: Card(
-                elevation: 4,
-                child: Row(
-                  children: <Widget>[
-                    SizedBox(width: 10.0),
-                    Icon(Icons.share),
-                    TextButton(
-                      child: Text(
-                        'Share app',
-                        style: TextStyle(fontSize: 18.0),
-                      ),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            
             Container(
               height: 70.0,
               width: MediaQuery.of(context).size.width,
@@ -141,9 +83,7 @@ class _SettingsState extends State<Settings> {
                       onPressed: () {
                         _signOut(context);
                         Route route = MaterialPageRoute(
-                          builder: (context) => LoginPage(onSignedIn:() {
-                            
-                          },),
+                          builder: (context) => LoginPage(onSignedIn: () {}),
                         );
                         Navigator.pushReplacement(context, route);
                       },

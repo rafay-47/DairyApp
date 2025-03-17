@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:dairyapp/constants.dart';
 
 class UserManagement extends StatefulWidget {
   const UserManagement({Key? key}) : super(key: key);
@@ -142,28 +143,51 @@ class _UserManagementState extends State<UserManagement> {
     return Scaffold(
       appBar: AppBar(
         title: Text('User Management'),
-        backgroundColor: Color.fromRGBO(22, 102, 225, 1),
+        backgroundColor: Constants.primaryColor,
         actions: [IconButton(icon: Icon(Icons.refresh), onPressed: _loadUsers)],
       ),
       body: Container(
-        color: Colors.grey[100],
+        color: Constants.backgroundColor,
         child:
             _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? Center(
+                  child: CircularProgressIndicator(
+                    color: Constants.primaryColor,
+                  ),
+                )
                 : _users.isEmpty
                 ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 80,
-                        color: Colors.grey[400],
+                      Container(
+                        padding: EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: Constants.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Icon(
+                          Icons.people_outline,
+                          size: 80,
+                          color: Constants.primaryColor,
+                        ),
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: 24),
                       Text(
                         'No users found',
-                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Constants.textDark,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Add users to get started',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Constants.textLight,
+                        ),
                       ),
                     ],
                   ),
@@ -177,174 +201,57 @@ class _UserManagementState extends State<UserManagement> {
                         '${user['name']} ${user['surname']}'.trim();
 
                     return Card(
-                      elevation: 4,
-                      margin: EdgeInsets.only(bottom: 16),
-                      child: ExpansionTile(
-                        leading: Stack(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Color.fromRGBO(22, 102, 225, 1),
-                              child: Text(
-                                fullName.isNotEmpty
-                                    ? fullName[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(color: Colors.white),
-                              ),
+                      elevation: 2,
+                      margin: EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(16),
+                        leading: CircleAvatar(
+                          backgroundColor: Constants.primaryColor,
+                          radius: 25,
+                          child: Text(
+                            fullName.isNotEmpty
+                                ? fullName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color:
-                                      user['status']
-                                          ? Colors.green
-                                          : Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  user['status'] ? Icons.check : Icons.close,
-                                  size: 8,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                         title: Text(
                           fullName,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color.fromRGBO(22, 102, 225, 1),
+                            fontSize: 16,
                           ),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        subtitle: Text(
+                          user['email'] ?? 'No email',
+                          style: TextStyle(color: Constants.textLight),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(user['email'] ?? ''),
-                            SizedBox(height: 4),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                            IconButton(
+                              icon: Icon(
+                                Icons.edit,
+                                color: Constants.accentColor,
                               ),
-                              decoration: BoxDecoration(
-                                color:
-                                    user['status']
-                                        ? Colors.green.withOpacity(0.1)
-                                        : Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color:
-                                      user['status']
-                                          ? Colors.green
-                                          : Colors.red,
-                                  width: 1,
-                                ),
+                              onPressed: () => _editUser(user),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete,
+                                color: Constants.errorColor,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    user['status']
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    size: 16,
-                                    color:
-                                        user['status']
-                                            ? Colors.green
-                                            : Colors.red,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    user['status'] ? 'Active' : 'Deactivated',
-                                    style: TextStyle(
-                                      color:
-                                          user['status']
-                                              ? Colors.green
-                                              : Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              onPressed: () => _confirmDeleteUser(user),
                             ),
                           ],
                         ),
-                        trailing: Switch(
-                          value: user['status'],
-                          onChanged:
-                              (value) => _toggleUserStatus(
-                                user['uid'],
-                                user['status'],
-                              ),
-                          activeColor: Color.fromRGBO(22, 102, 225, 1),
-                          activeTrackColor: Color.fromRGBO(22, 102, 225, 0.3),
-                        ),
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                _buildInfoRow(
-                                  Icons.phone,
-                                  'Phone',
-                                  user['number'] ?? 'Not provided',
-                                ),
-                                _buildInfoRow(
-                                  Icons.location_on,
-                                  'Address',
-                                  user['address'] ?? 'Not provided',
-                                ),
-                                _buildInfoRow(
-                                  Icons.receipt,
-                                  'Current Bill',
-                                  '₹${user['bill']}',
-                                ),
-                                _buildInfoRow(
-                                  Icons.shopping_cart,
-                                  'Cart Value',
-                                  '₹${user['cartValue']}',
-                                ),
-                                if (user['plan'] != null &&
-                                    user['plan'].toString().isNotEmpty)
-                                  _buildInfoRow(
-                                    Icons.calendar_today,
-                                    'Subscription Plan',
-                                    user['plan'].toString(),
-                                  ),
-                                SizedBox(height: 16),
-                                ElevatedButton.icon(
-                                  onPressed:
-                                      () => _showOrderHistory(
-                                        context,
-                                        user['uid'],
-                                        fullName,
-                                      ),
-                                  icon: Icon(Icons.history),
-                                  label: Text('View Order History'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color.fromRGBO(
-                                      22,
-                                      102,
-                                      225,
-                                      1,
-                                    ),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
                     );
                   },
@@ -358,7 +265,7 @@ class _UserManagementState extends State<UserManagement> {
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Color.fromRGBO(22, 102, 225, 1)),
+          Icon(icon, color: Constants.primaryColor),
           SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -366,7 +273,7 @@ class _UserManagementState extends State<UserManagement> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Constants.textDark, fontSize: 12),
                 ),
                 Text(
                   value,
@@ -399,7 +306,7 @@ class _UserManagementState extends State<UserManagement> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color.fromRGBO(22, 102, 225, 1),
+                          color: Constants.primaryColor,
                         ),
                       ),
                       IconButton(
@@ -440,14 +347,14 @@ class _UserManagementState extends State<UserManagement> {
                                 Icon(
                                   Icons.receipt_long_outlined,
                                   size: 80,
-                                  color: Colors.grey[400],
+                                  color: Constants.textLight,
                                 ),
                                 SizedBox(height: 16),
                                 Text(
                                   'No orders found',
                                   style: TextStyle(
                                     fontSize: 18,
-                                    color: Colors.grey[600],
+                                    color: Constants.textLight,
                                   ),
                                 ),
                               ],
@@ -477,7 +384,7 @@ class _UserManagementState extends State<UserManagement> {
                                     Text(
                                       '₹${order['total'] ?? '0'}',
                                       style: TextStyle(
-                                        color: Color.fromRGBO(22, 102, 225, 1),
+                                        color: Constants.primaryColor,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -533,23 +440,31 @@ class _UserManagementState extends State<UserManagement> {
   }
 
   Color _getStatusColor(dynamic status) {
-    if (status == null) return Colors.blue;
+    if (status == null) return Constants.primaryColor;
 
     if (status is bool) {
-      return status ? Colors.green : Colors.red;
+      return status ? Constants.successColor : Constants.errorColor;
     }
 
     switch (status.toString().toLowerCase()) {
       case 'true':
       case 'delivered':
-        return Colors.green;
+        return Constants.successColor;
       case 'false':
       case 'cancelled':
-        return Colors.red;
+        return Constants.errorColor;
       case 'processing':
-        return Colors.orange;
+        return Constants.warningColor;
       default:
-        return Colors.blue;
+        return Constants.primaryColor;
     }
+  }
+
+  void _editUser(Map<String, dynamic> user) {
+    // Implement the edit user functionality
+  }
+
+  void _confirmDeleteUser(Map<String, dynamic> user) {
+    // Implement the confirm delete user functionality
   }
 }
