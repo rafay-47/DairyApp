@@ -24,6 +24,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true // Enable core library desugaring
     }
 
     kotlinOptions {
@@ -44,4 +45,7 @@ flutter {
 dependencies {
     // Add Material Components dependency
     implementation("com.google.android.material:material:1.9.0")
+
+    // Update the desugaring library dependency to version 2.1.4 (or above)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dairyapp/Screens/AdminOrders.dart';
+import 'package:dairyapp/Screens/AdminOffers.dart';
 import 'AdminSubscriptionsPage.dart';
 import 'PaymentManagementPage.dart';
 
@@ -309,8 +310,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 _buildDrawerItem(Icons.subscriptions, 'Subscriptions', 6),
                 _buildDrawerItem(Icons.local_offer, 'Offers', 7),
                 const Divider(),
-                _buildDrawerItem(Icons.settings, 'Settings', 8),
-                _buildDrawerItem(Icons.logout, 'Logout', 9),
+                _buildDrawerItem(Icons.logout, 'Logout', 8),
               ],
             ),
           ),
@@ -350,9 +350,64 @@ class _AdminHomePageState extends State<AdminHomePage> {
       selected: _selectedIndex == index,
       selectedTileColor: Constants.accentColor.withOpacity(0.1),
       onTap: () {
-        _navigateToPage(index);
+        // Special handling for logout
+        if (index == 8) {
+          _handleLogout();
+        } else {
+          _navigateToPage(index);
+        }
       },
     );
+  }
+
+  void _handleLogout() async {
+    try {
+      // Show a confirmation dialog
+      bool confirm =
+          await showDialog(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: Text('Confirm Logout'),
+                  content: Text('Are you sure you want to log out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text('CANCEL'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Constants.accentColor,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: Text('LOGOUT'),
+                    ),
+                  ],
+                ),
+          ) ??
+          false;
+
+      if (confirm) {
+        // Close the drawer if it's open
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          Navigator.of(context).pop();
+        }
+
+        // Sign out from Firebase
+        await FirebaseAuth.instance.signOut();
+
+        // Call the callback to update the app's authentication state
+        widget.onSignedOut();
+      }
+    } catch (e) {
+      print('Error during logout: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error logging out: $e'),
+          backgroundColor: Constants.errorColor,
+        ),
+      );
+    }
   }
 
   Widget _buildBody() {
@@ -372,15 +427,31 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 6:
         return AdminSubscriptionsPage();
       case 7:
-        return AdminSubscriptionsPage();
-      case 8:
-        return AdminSubscriptionsPage();
-      case 9:
-        widget.onSignedOut();
-        return LoginPage(onSignedIn: () {});
+        return AdminOffers();
       default:
         print("Warning: No widget for index $_selectedIndex");
-        return LoginPage(onSignedIn: () {});
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.construction, size: 64, color: Colors.orange),
+              SizedBox(height: 16),
+              Text(
+                "Page Under Construction",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedIndex = 0; // Return to dashboard
+                  });
+                },
+                child: Text("Return to Dashboard"),
+              ),
+            ],
+          ),
+        );
     }
   }
 

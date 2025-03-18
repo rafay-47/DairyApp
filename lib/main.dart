@@ -13,7 +13,7 @@ import 'package:toast/toast.dart';
 import 'Animations/FadeAnimation.dart';
 import 'Screens/register.dart';
 import 'firebase_options.dart';
-import 'package:dairyapp/services/push_notifications.dart';
+import 'package:dairyapp/api/firebase_api.dart';
 import 'constants.dart';
 
 void main() async {
@@ -23,9 +23,12 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   // Initialize Firebase
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await PushNotificationService().initialize();
+
+  // Initialize Firebase Messaging and notifications
+  //await FirebaseApi().initNotifications();
+
+  //await PushNotificationService().initialize();
 
   // Initialize Stripe with key from .env
   final stripePublishableKey =
@@ -353,21 +356,11 @@ class LoginState extends State<LoginPage> {
           password: password,
         );
 
-        // After successful login, send notification to the specific email
-        try {
-          await PushNotificationService().sendNotification(
-            userEmail:
-                'AbdulRafay2582@gmail.com', // This email will receive the notification
-            title: 'New Login Alert',
-            body: 'A user just logged into the Dairy App',
-            data: {
-              'type': 'login_alert',
-              'loginTime': DateTime.now().toString(),
-              'userEmail': email, // The email of the user who logged in
-            },
-          );
-        } catch (notificationError) {
-          print('Failed to send notification: $notificationError');
+        final user = firebase_auth.FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          // Update the user's FCM token in Firestore using the instance method.
+          final firebaseApi = FirebaseApi();
+          await firebaseApi.updateUserToken(user.uid);
         }
 
         if (mounted) {
