@@ -11,6 +11,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Cart extends StatefulWidget {
   const Cart({Key? key}) : super(key: key);
+
   @override
   _CartState createState() => _CartState();
 }
@@ -19,27 +20,28 @@ class _CartState extends State<Cart> {
   bool isLoading = false;
 
   // Price calculations
-  double subtotal = 0;
-  double deliveryCharge = 0;
-  double couponDiscount = 0;
-  double finalAmount = 0;
+  double subtotal = 0; // sum of item prices × quantity
+  double deliveryCharge = 0; // default 0 or 40 if subtotal < 500
+  double couponDiscount = 0; // discount from coupon
+  double finalAmount = 0; // final = subtotal + delivery - discount
 
-  // All coupons fetched from Firestore (active, not expired)
+  // All coupons from Firestore
   List<Map<String, dynamic>> _allCoupons = [];
-  // Coupons that pass all logical checks
+  // Coupons that pass logic (minPurchase, usage, etc.)
   List<Map<String, dynamic>> _applicableCoupons = [];
-  // Currently selected coupon
+  // The coupon user selected
   Map<String, dynamic>? _selectedCoupon;
 
-  // User data & stats needed for full coupon logic
-  Map<String, dynamic>? _userData; // e.g., includes 'createdAt'
-  int _userOrderCount = 0; // Number of orders placed by user
-  Map<String, int> _couponUsageByUser = {}; // e.g., { 'couponId': timesUsed }
+  // For user data & stats
+  Map<String, dynamic>? _userData;
+  int _userOrderCount = 0; // how many orders user has
+  Map<String, int> _couponUsageByUser =
+      {}; // tracks how many times user used each coupon
 
   @override
   void initState() {
     super.initState();
-    // Initialize Stripe (ideally, do this once in app startup)
+    // Initialize Stripe
     stripe.Stripe.publishableKey =
         'pk_test_51OuuwVP0XD6u4TvYIUtwCffNiD1ZpOaKxKejORfDqAPjS6KSrwUg3qrd8jyrzYtQW6B6DJG2zScHPurSvn5EA7o500bOPE7N92';
     _fetchInitialData();
@@ -51,14 +53,15 @@ class _CartState extends State<Cart> {
     ToastContext().init(context);
   }
 
-  /// Fetch initial data: user info, order count, coupon usage, and all coupons.
+  /// Fetch user info, coupon usage, and all coupons
   Future<void> _fetchInitialData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    try {
-      await dotenv.load(); // Loads .env file for secret keys, if needed.
 
-      // 1. Fetch user data
+    try {
+      await dotenv.load();
+
+      // 1. Get user doc
       final userDoc =
           await FirebaseFirestore.instance
               .collection('users')
@@ -66,13 +69,13 @@ class _CartState extends State<Cart> {
               .get();
       _userData = userDoc.data() ?? {};
 
-      // 2. Count how many orders the user has placed
+      // 2. Count how many orders the user has
       _userOrderCount = await _getUserOrderCount(user.uid);
 
-      // 3. Determine how many times the user has used each coupon
+      // 3. Get how many times the user has used each coupon
       _couponUsageByUser = await _getUserCouponUsageCounts(user.uid);
 
-      // 4. Fetch all active & not expired coupons
+      // 4. Fetch active & not-expired coupons
       await _fetchAllCoupons();
 
       setState(() {});
@@ -81,7 +84,6 @@ class _CartState extends State<Cart> {
     }
   }
 
-  /// Example: Count user's orders
   Future<int> _getUserOrderCount(String uid) async {
     final orderSnap =
         await FirebaseFirestore.instance
@@ -91,7 +93,6 @@ class _CartState extends State<Cart> {
     return orderSnap.size;
   }
 
-  /// Example: How many times the user used each coupon.
   Future<Map<String, int>> _getUserCouponUsageCounts(String uid) async {
     final usageCountMap = <String, int>{};
     final orderSnap =
@@ -99,7 +100,6 @@ class _CartState extends State<Cart> {
             .collection('orders')
             .where('userId', isEqualTo: uid)
             .get();
-
     for (var doc in orderSnap.docs) {
       final data = doc.data() as Map<String, dynamic>;
       final couponId = data['couponId'];
@@ -110,7 +110,6 @@ class _CartState extends State<Cart> {
     return usageCountMap;
   }
 
-  /// Fetch all active, not expired coupons.
   Future<void> _fetchAllCoupons() async {
     try {
       final now = DateTime.now();
@@ -130,9 +129,7 @@ class _CartState extends State<Cart> {
     }
   }
 
-  /// Filters coupons based on all fields.
-  /// IMPORTANT: We now compare (cartSubtotal + cartDelivery) to minPurchase.
-  /// Also, for product restrictions, we compare the cart document's "productId" field.
+  /// Filter coupons by usage limit, minPurchase, productIds, etc.
   List<Map<String, dynamic>> _getApplicableCoupons({
     required List<QueryDocumentSnapshot> cartDocs,
     required double cartSubtotal,
@@ -141,22 +138,18 @@ class _CartState extends State<Cart> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return [];
 
-    List<Map<String, dynamic>> applicable = [];
-
-    // Use user creation time from userDoc or fallback to FirebaseAuth metadata
     final now = DateTime.now();
     final userCreatedAt =
         _userData?['createdAt']?.toDate() ??
         (user.metadata.creationTime ?? DateTime(2000));
     final daysSinceSignup = now.difference(userCreatedAt).inDays;
-
-    // We'll consider total = subtotal + delivery for minPurchase checks.
-    final double cartTotal = cartSubtotal + cartDelivery;
+    final cartTotal = cartSubtotal + cartDelivery;
+    List<Map<String, dynamic>> applicable = [];
 
     for (var coupon in _allCoupons) {
       bool isApplicable = true;
 
-      // Check global usage limit: usageLimit vs. usedCount.
+      // usageLimit & usedCount
       if (coupon.containsKey('usageLimit') && coupon.containsKey('usedCount')) {
         final usageLimit = coupon['usageLimit'] ?? 999999;
         final usedCount = coupon['usedCount'] ?? 0;
@@ -165,42 +158,38 @@ class _CartState extends State<Cart> {
         }
       }
 
-      // Check maxUsesPerUser.
+      // maxUsesPerUser
       if (coupon.containsKey('maxUsesPerUser')) {
-        final maxUsesPerUser = coupon['maxUsesPerUser'] ?? 1;
-        final userUsedThisCoupon = _couponUsageByUser[coupon['id']] ?? 0;
-        if (userUsedThisCoupon >= maxUsesPerUser) {
+        final maxUses = coupon['maxUsesPerUser'] ?? 1;
+        final userUsed = _couponUsageByUser[coupon['id']] ?? 0;
+        if (userUsed >= maxUses) {
           isApplicable = false;
         }
       }
 
-      // Check if coupon is for first purchase only.
-      if (coupon['isFirstPurchaseOnly'] == true) {
-        if (_userOrderCount > 0) {
-          isApplicable = false;
-        }
+      // isFirstPurchaseOnly
+      if (coupon['isFirstPurchaseOnly'] == true && _userOrderCount > 0) {
+        isApplicable = false;
       }
 
-      // Check if coupon is for new users only (e.g., account age < 7 days).
-      if (coupon['isNewUserOnly'] == true) {
-        if (daysSinceSignup > 7) {
-          isApplicable = false;
-        }
+      // isNewUserOnly
+      if (coupon['isNewUserOnly'] == true && daysSinceSignup > 7) {
+        isApplicable = false;
       }
 
-      // Check minimum purchase requirement using cartTotal.
+      // minPurchase check
       if (coupon.containsKey('minPurchase')) {
-        double minPurchase =
+        final minPurchase =
             double.tryParse(coupon['minPurchase'].toString()) ?? 0;
         if (cartTotal < minPurchase) {
           isApplicable = false;
         }
       }
 
-      // If coupon is not "applyToAll", check for product or category restrictions.
+      // If not applyToAll, check productIds/categoryIds
       bool applyToAll = coupon['applyToAll'] ?? false;
       if (!applyToAll) {
-        // Product IDs: compare coupon['productIds'] with cart doc's "productId" field.
+        // productIds
         if (coupon.containsKey('productIds') &&
             (coupon['productIds'] as List).isNotEmpty) {
           bool found = false;
@@ -214,8 +203,7 @@ class _CartState extends State<Cart> {
           }
           if (!found) isApplicable = false;
         }
-
-        // Category IDs: check the cart doc's "category" field.
+        // categoryIds
         if (coupon.containsKey('categoryIds') &&
             (coupon['categoryIds'] as List).isNotEmpty) {
           bool found = false;
@@ -238,12 +226,11 @@ class _CartState extends State<Cart> {
     return applicable;
   }
 
-  /// Make Stripe Payment
+  /// Stripe Payment
   Future<void> makeStripePayment() async {
     setState(() {
       isLoading = true;
     });
-
     try {
       final int amount = (finalAmount * 100).toInt();
       final secretKey =
@@ -295,44 +282,39 @@ class _CartState extends State<Cart> {
       duration: Toast.lengthShort,
       gravity: Toast.bottom,
     );
-    _processOrderInFirebase();
+    _processOrderInFirestore();
   }
 
-  /// Save the final order in Firestore.
-  Future<void> _processOrderInFirebase() async {
+  /// Process the order in Firestore
+  Future<void> _processOrderInFirestore() async {
     try {
       final User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw 'Please login to place order';
-      }
+      if (currentUser == null) throw 'Please login to place order';
+
       final userDoc =
           await FirebaseFirestore.instance
               .collection('users')
               .doc(currentUser.uid)
               .get();
-      if (!userDoc.exists) {
-        throw 'User profile not found';
-      }
+      if (!userDoc.exists) throw 'User profile not found';
+
       final userData = userDoc.data() ?? {};
       final userEmail = currentUser.email ?? '';
       final userName = userData['name'] ?? '';
       final userPhone = userData['phone'] ?? '';
 
-      QuerySnapshot cartSnapshot =
+      final cartSnap =
           await FirebaseFirestore.instance.collection('cart').get();
-      if (cartSnapshot.docs.isEmpty) {
-        throw 'Cart is empty';
-      }
+      if (cartSnap.docs.isEmpty) throw 'Cart is empty';
 
       final prefs = await SharedPreferences.getInstance();
       final pinCode = prefs.getString('user_pin_code');
-      if (pinCode == null) {
-        throw 'Please set your delivery location';
-      }
+      if (pinCode == null) throw 'Please set your delivery location';
 
+      // Build items array
       List<Map<String, dynamic>> items = [];
       double totalAmount = 0;
-      for (var doc in cartSnapshot.docs) {
+      for (var doc in cartSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final price =
             data['price'] != null
@@ -340,8 +322,8 @@ class _CartState extends State<Cart> {
                 : 0.0;
         final quantity = data['quantity'] ?? 1;
         totalAmount += price * quantity;
+
         items.add({
-          // You can also include data['productId'] here if needed.
           'productId': data['productId'] ?? doc.id,
           'category': data['category'] ?? '',
           'description': data['description'] ?? '',
@@ -356,7 +338,7 @@ class _CartState extends State<Cart> {
       subtotal = totalAmount;
       deliveryCharge = subtotal >= 500 ? 0 : 40;
       couponDiscount = 0;
-      String? usedCouponId; // store the ID if user used a coupon
+      String? usedCouponId;
 
       if (_selectedCoupon != null) {
         final coupon = _selectedCoupon!;
@@ -366,7 +348,7 @@ class _CartState extends State<Cart> {
         if (type == 'Percentage') {
           couponDiscount = subtotal * (discountVal / 100);
           if (coupon.containsKey('maxDiscount')) {
-            double maxDisc =
+            final maxDisc =
                 double.tryParse(coupon['maxDiscount'].toString()) ?? 0;
             if (couponDiscount > maxDisc) couponDiscount = maxDisc;
           }
@@ -374,7 +356,13 @@ class _CartState extends State<Cart> {
           couponDiscount = discountVal;
           if (couponDiscount > subtotal) couponDiscount = subtotal;
         } else if (type == 'Free Delivery') {
+          // Always free shipping
           deliveryCharge = 0;
+          // If discountVal > 0, also apply that discount
+          if (discountVal > 0) {
+            couponDiscount = discountVal;
+            if (couponDiscount > subtotal) couponDiscount = subtotal;
+          }
         }
         usedCouponId = coupon['id'];
       }
@@ -383,6 +371,7 @@ class _CartState extends State<Cart> {
       finalAmount = computedTotal < 0 ? 0 : computedTotal;
 
       final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+
       // Save order
       await FirebaseFirestore.instance.collection('orders').add({
         'userId': currentUser.uid,
@@ -404,19 +393,17 @@ class _CartState extends State<Cart> {
         'paymentStatus': 'Paid',
         'deliveryAddress': userData['address'] ?? '',
         'notes': '',
-        // Optionally store which coupon was used
         'couponId': usedCouponId,
       });
 
-      // If the coupon has a usage limit, increment usedCount
+      // If the coupon has usage limit, increment usedCount
       if (usedCouponId != null) {
-        final usedCouponIndex = _allCoupons.indexWhere(
+        final usedIndex = _allCoupons.indexWhere(
           (c) => c['id'] == usedCouponId,
         );
-        if (usedCouponIndex != -1) {
-          final couponDocId = _allCoupons[usedCouponIndex]['id'];
-          final couponUsedCount =
-              _allCoupons[usedCouponIndex]['usedCount'] ?? 0;
+        if (usedIndex != -1) {
+          final couponDocId = _allCoupons[usedIndex]['id'];
+          final couponUsedCount = _allCoupons[usedIndex]['usedCount'] ?? 0;
           await FirebaseFirestore.instance
               .collection('coupons')
               .doc(couponDocId)
@@ -503,14 +490,14 @@ class _CartState extends State<Cart> {
         });
   }
 
-  void _updateQuantity(String productId, int newQuantity) {
+  void _updateQuantity(String cartDocId, int newQuantity) {
     if (newQuantity <= 0) {
-      _removeFromCart(productId);
+      _removeFromCart(cartDocId);
       return;
     }
     FirebaseFirestore.instance
         .collection('cart')
-        .doc(productId)
+        .doc(cartDocId)
         .update({'quantity': newQuantity})
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -519,10 +506,10 @@ class _CartState extends State<Cart> {
         });
   }
 
-  void _removeFromCart(String productId) {
+  void _removeFromCart(String cartDocId) {
     FirebaseFirestore.instance
         .collection('cart')
-        .doc(productId)
+        .doc(cartDocId)
         .delete()
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -603,16 +590,13 @@ class _CartState extends State<Cart> {
     );
   }
 
-  /// Builds the coupon selection UI.
+  /// Builds the coupon selection UI
   Widget _buildCouponSelection(List<QueryDocumentSnapshot> cartDocs) {
-    // Recompute which coupons are applicable
     _applicableCoupons = _getApplicableCoupons(
       cartDocs: cartDocs,
       cartSubtotal: subtotal,
       cartDelivery: deliveryCharge,
     );
-
-    // If the selected coupon is no longer applicable, reset it.
     if (_selectedCoupon != null &&
         !_applicableCoupons.any((c) => c['id'] == _selectedCoupon!['id'])) {
       _selectedCoupon = null;
@@ -647,20 +631,22 @@ class _CartState extends State<Cart> {
             items: [
               DropdownMenuItem(child: Text('No Coupon'), value: null),
               ..._applicableCoupons.map((coupon) {
-                String displayText = '${coupon['code']} - ';
-                if (coupon['type'] == 'Percentage') {
-                  displayText += '${coupon['discount']}% off';
-                } else if (coupon['type'] == 'Fixed') {
-                  displayText += '₹${coupon['discount']} off';
-                } else if (coupon['type'] == 'Free Delivery') {
-                  displayText += 'Free Delivery';
+                final type = coupon['type'];
+                final discountVal = coupon['discount'] ?? 0;
+                String displayText = coupon['code'];
+                if (type == 'Free Delivery') {
+                  displayText += ' - Free Delivery';
+                } else if (type == 'Percentage') {
+                  displayText += ' - $discountVal% off';
+                } else if (type == 'Fixed') {
+                  displayText += ' - ₹$discountVal off';
                 }
                 if (coupon.containsKey('minPurchase')) {
                   displayText += ' (Min ₹${coupon['minPurchase']})';
                 }
                 return DropdownMenuItem(
-                  child: Text(displayText),
                   value: coupon,
+                  child: Text(displayText),
                 );
               }).toList(),
             ],
@@ -677,22 +663,65 @@ class _CartState extends State<Cart> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             SizedBox(height: 4),
-            Text('Code: ${_selectedCoupon!['code']}'),
-            Text('Type: ${_selectedCoupon!['type']}'),
-            if (_selectedCoupon!['type'] == 'Percentage')
-              Text('Discount: ${_selectedCoupon!['discount']}%'),
-            if (_selectedCoupon!['type'] == 'Fixed')
-              Text('Discount: ₹${_selectedCoupon!['discount']}'),
-            if (_selectedCoupon!['type'] == 'Free Delivery')
-              Text('Free Delivery Applied'),
-            if (_selectedCoupon!.containsKey('minPurchase'))
-              Text('Minimum Purchase: ₹${_selectedCoupon!['minPurchase']}'),
-            if (_selectedCoupon!.containsKey('maxDiscount'))
-              Text('Max Discount: ₹${_selectedCoupon!['maxDiscount']}'),
+            _buildCouponDetails(),
           ],
         ],
       ),
     );
+  }
+
+  Widget _buildCouponDetails() {
+    final coupon = _selectedCoupon!;
+    final type = coupon['type'];
+    final discountVal = double.tryParse(coupon['discount'].toString()) ?? 0;
+
+    // Show type & discount info
+    if (type == 'Free Delivery') {
+      // If discountVal > 0, "Free Delivery + ₹X off"
+      if (discountVal > 0) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Discount: Free Delivery + ₹$discountVal off'),
+            if (coupon.containsKey('minPurchase'))
+              Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+            if (coupon.containsKey('maxDiscount') && type == 'Percentage')
+              Text('Max Discount: ₹${coupon['maxDiscount']}'),
+          ],
+        );
+      } else {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Discount: Free Delivery'),
+            if (coupon.containsKey('minPurchase'))
+              Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+          ],
+        );
+      }
+    } else if (type == 'Fixed') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Discount: ₹$discountVal off'),
+          if (coupon.containsKey('minPurchase'))
+            Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+        ],
+      );
+    } else if (type == 'Percentage') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Discount: $discountVal% off'),
+          Text('You Saved: ₹${couponDiscount.toStringAsFixed(2)}'),
+          if (coupon.containsKey('minPurchase'))
+            Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+          if (coupon.containsKey('maxDiscount'))
+            Text('Max Discount: ₹${coupon['maxDiscount']}'),
+        ],
+      );
+    }
+    return SizedBox.shrink();
   }
 
   @override
@@ -711,9 +740,7 @@ class _CartState extends State<Cart> {
               }
               return IconButton(
                 icon: Icon(Icons.delete_outline, color: Constants.primaryColor),
-                onPressed: () {
-                  _showClearCartDialog();
-                },
+                onPressed: _showClearCartDialog,
               );
             },
           ),
@@ -733,7 +760,7 @@ class _CartState extends State<Cart> {
             return _buildEmptyCart();
           }
 
-          // Recompute subtotal from cart items.
+          // 1. Calculate subtotal
           double totalAmount = 0;
           for (var item in cartItems) {
             final data = item.data() as Map<String, dynamic>;
@@ -745,38 +772,50 @@ class _CartState extends State<Cart> {
             totalAmount += price * quantity;
           }
           subtotal = totalAmount;
-          // Base delivery logic.
+
+          // 2. Base delivery logic
           deliveryCharge = subtotal >= 500 ? 0 : 40;
 
-          // If a coupon is selected, compute discount.
+          // 3. Apply coupon discount
           couponDiscount = 0;
           if (_selectedCoupon != null) {
-            final type = _selectedCoupon!['type'];
+            final coupon = _selectedCoupon!;
+            final type = coupon['type'];
             final discountVal =
-                double.tryParse(_selectedCoupon!['discount'].toString()) ?? 0;
+                double.tryParse(coupon['discount'].toString()) ?? 0;
+
             if (type == 'Percentage') {
               couponDiscount = subtotal * (discountVal / 100);
-              if (_selectedCoupon!.containsKey('maxDiscount')) {
+              if (coupon.containsKey('maxDiscount')) {
                 double maxDisc =
-                    double.tryParse(
-                      _selectedCoupon!['maxDiscount'].toString(),
-                    ) ??
-                    0;
+                    double.tryParse(coupon['maxDiscount'].toString()) ?? 0;
                 if (couponDiscount > maxDisc) couponDiscount = maxDisc;
               }
             } else if (type == 'Fixed') {
               couponDiscount = discountVal;
-              if (couponDiscount > subtotal) couponDiscount = subtotal;
+              if (couponDiscount > subtotal) {
+                couponDiscount = subtotal;
+              }
             } else if (type == 'Free Delivery') {
+              // Zero out the delivery
               deliveryCharge = 0;
+              // If discountVal > 0, apply that to the subtotal
+              if (discountVal > 0) {
+                couponDiscount = discountVal;
+                if (couponDiscount > subtotal) {
+                  couponDiscount = subtotal;
+                }
+              }
             }
           }
+
+          // 4. Final total
           final computedTotal = subtotal + deliveryCharge - couponDiscount;
           finalAmount = computedTotal < 0 ? 0 : computedTotal;
 
           return Column(
             children: [
-              // Cart items list.
+              // Cart items
               Expanded(
                 child: ListView.builder(
                   padding: EdgeInsets.all(16),
@@ -784,8 +823,7 @@ class _CartState extends State<Cart> {
                   itemBuilder: (context, index) {
                     final item = cartItems[index];
                     final data = item.data() as Map<String, dynamic>;
-                    // Use the productId field from cart data.
-                    final productId = data['productId'] ?? item.id;
+                    final cartDocId = item.id;
                     final name = data['name'] ?? 'Unnamed Product';
                     final price =
                         data['price'] != null
@@ -849,12 +887,11 @@ class _CartState extends State<Cart> {
                                   Row(
                                     children: [
                                       InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            item.id,
-                                            quantity - 1,
-                                          );
-                                        },
+                                        onTap:
+                                            () => _updateQuantity(
+                                              cartDocId,
+                                              quantity - 1,
+                                            ),
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
@@ -890,12 +927,11 @@ class _CartState extends State<Cart> {
                                         ),
                                       ),
                                       InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            item.id,
-                                            quantity + 1,
-                                          );
-                                        },
+                                        onTap:
+                                            () => _updateQuantity(
+                                              cartDocId,
+                                              quantity + 1,
+                                            ),
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
@@ -917,9 +953,7 @@ class _CartState extends State<Cart> {
                                 Icons.delete_outline,
                                 color: Colors.red[400],
                               ),
-                              onPressed: () {
-                                _removeFromCart(item.id);
-                              },
+                              onPressed: () => _removeFromCart(cartDocId),
                             ),
                           ],
                         ),
@@ -929,10 +963,10 @@ class _CartState extends State<Cart> {
                 ),
               ),
 
-              // Coupon selection section.
+              // Coupon selection
               _buildCouponSelection(cartItems),
 
-              // Order summary and checkout.
+              // Summary & checkout
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
