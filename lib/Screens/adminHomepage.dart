@@ -1,5 +1,6 @@
 import 'package:dairyapp/Screens/CategoriesManagement.dart';
 import 'package:dairyapp/Screens/UserManagementPage.dart';
+import 'package:dairyapp/Screens/UserOrders.dart';
 import 'package:dairyapp/Screens/productManagement.dart';
 import 'package:dairyapp/constants.dart';
 import 'package:dairyapp/main.dart';
@@ -11,6 +12,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dairyapp/Screens/AdminOrders.dart';
 import 'AdminSubscriptionsPage.dart';
+import 'PaymentManagementPage.dart';
 
 class AdminHomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -22,6 +24,7 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage> {
   int _selectedIndex = 0;
+  int? _previousIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -49,6 +52,27 @@ class _AdminHomePageState extends State<AdminHomePage> {
   void initState() {
     super.initState();
     _fetchDashboardData();
+  }
+
+  void _navigateToPage(int index) {
+    if (_selectedIndex != index) {
+      _previousIndex = _selectedIndex;
+
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  Future<bool> _handleBackPress() {
+    if (_selectedIndex != 0) {
+      setState(() {
+        _selectedIndex = _previousIndex ?? 0;
+      });
+      return Future.value(false);
+    }
+
+    return Future.value(true);
   }
 
   Future<void> _fetchDashboardData() async {
@@ -193,107 +217,113 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Constants.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Constants.primaryColor,
-        elevation: 2,
-        title: const Text(
-          'Admin Dashboard',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {
-            _scaffoldKey.currentState?.openDrawer();
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _fetchDashboardData,
+    return WillPopScope(
+      onWillPop: _handleBackPress,
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Constants.backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Constants.primaryColor,
+          elevation: 2,
+          title: const Text(
+            'Admin Dashboard',
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withOpacity(0.2),
-              child: const Text(
-                'AD',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _fetchDashboardData,
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+              ),
+              onPressed: () {},
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: CircleAvatar(
+                backgroundColor: Colors.white.withOpacity(0.2),
+                child: const Text(
+                  'AD',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: Container(
-          color: Constants.cardColor,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(color: Constants.accentColor),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        'AD',
+          ],
+        ),
+        drawer: Drawer(
+          child: Container(
+            color: Constants.cardColor,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: const BoxDecoration(color: Constants.accentColor),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          'AD',
+                          style: TextStyle(
+                            color: Constants.accentColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Admin User',
                         style: TextStyle(
-                          color: Constants.accentColor,
+                          color: Colors.white,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'Admin User',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      Text(
+                        'admin@dairyapp.com',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
-                    ),
-                    Text(
-                      'admin@dairyapp.com',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
-              _buildDrawerItem(Icons.category, 'Categories', 1),
-              _buildDrawerItem(Icons.inventory, 'Products', 2),
-              _buildDrawerItem(Icons.shopping_bag, 'Orders', 3),
-              _buildDrawerItem(Icons.people, 'Users', 4),
-              _buildDrawerItem(Icons.payments, 'Payments', 5),
-              _buildDrawerItem(Icons.subscriptions, 'Subscriptions', 6),
-              _buildDrawerItem(Icons.local_offer, 'Offers', 7),
-              const Divider(),
-              _buildDrawerItem(Icons.settings, 'Settings', 8),
-              _buildDrawerItem(Icons.logout, 'Logout', 9),
-            ],
+                _buildDrawerItem(Icons.dashboard, 'Dashboard', 0),
+                _buildDrawerItem(Icons.category, 'Categories', 1),
+                _buildDrawerItem(Icons.inventory, 'Products', 2),
+                _buildDrawerItem(Icons.shopping_bag, 'Orders', 3),
+                _buildDrawerItem(Icons.people, 'Users', 4),
+                _buildDrawerItem(Icons.payments, 'Payments', 5),
+                _buildDrawerItem(Icons.subscriptions, 'Subscriptions', 6),
+                _buildDrawerItem(Icons.local_offer, 'Offers', 7),
+                const Divider(),
+                _buildDrawerItem(Icons.settings, 'Settings', 8),
+                _buildDrawerItem(Icons.logout, 'Logout', 9),
+              ],
+            ),
           ),
         ),
+        body:
+            _isLoading
+                ? const Center(
+                  child: CircularProgressIndicator(
+                    color: Constants.accentColor,
+                  ),
+                )
+                : _buildBody(),
       ),
-      body:
-          _isLoading
-              ? const Center(
-                child: CircularProgressIndicator(color: Constants.accentColor),
-              )
-              : _selectedIndex == 0
-              ? _buildDashboard()
-              : _buildComingSoon(),
     );
   }
 
@@ -320,82 +350,38 @@ class _AdminHomePageState extends State<AdminHomePage> {
       selected: _selectedIndex == index,
       selectedTileColor: Constants.accentColor.withOpacity(0.1),
       onTap: () {
-        setState(() {
-          _selectedIndex = index;
-          Navigator.pop(context);
-          if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => CategoriesPage()),
-            );
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ProductsPage()),
-            );
-          } else if (index == 9) {
-            FirebaseAuth.instance.signOut();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => LoginPage(onSignedIn: () {}),
-              ),
-            );
-          } else if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => UserManagement()),
-            );
-          } else if (index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AdminOrders()),
-            );
-          } else if (index == 6) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AdminSubscriptionsPage()),
-            );
-          }
-        });
+        _navigateToPage(index);
       },
     );
   }
 
-  Widget _buildComingSoon() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              color: Constants.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Icon(
-              Icons.construction,
-              size: 80,
-              color: Constants.primaryColor,
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Coming Soon',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Constants.primaryColor,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'This feature is under development',
-            style: TextStyle(fontSize: 16, color: Constants.textLight),
-          ),
-        ],
-      ),
-    );
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildDashboard();
+      case 1:
+        return CategoriesPage();
+      case 2:
+        return ProductsPage();
+      case 3:
+        return AdminOrders();
+      case 4:
+        return UserManagement();
+      case 5:
+        return PaymentManagementPage();
+      case 6:
+        return AdminSubscriptionsPage();
+      case 7:
+        return AdminSubscriptionsPage();
+      case 8:
+        return AdminSubscriptionsPage();
+      case 9:
+        widget.onSignedOut();
+        return LoginPage(onSignedIn: () {});
+      default:
+        print("Warning: No widget for index $_selectedIndex");
+        return LoginPage(onSignedIn: () {});
+    }
   }
 
   Widget _buildDashboard() {
@@ -507,17 +493,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      // Navigate to reports page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  _buildComingSoon(), // Placeholder for reports page
-                        ),
-                      );
-                    },
+                    onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Constants.accentColor,
@@ -888,9 +864,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 TextButton(
                   onPressed: () {
                     // Navigate to all orders page
-                    setState(() {
-                      _selectedIndex = 3; // Orders index in drawer
-                    });
+                    _navigateToPage(3);
                   },
                   child: const Text('View All'),
                 ),

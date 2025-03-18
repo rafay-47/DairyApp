@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:toast/toast.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dairyapp/Screens/payment.dart';
+import 'package:dairyapp/Services/wallet_service.dart';
 
 // Enhanced Cart page with modern UI
 class Cart extends StatefulWidget {
@@ -18,15 +20,13 @@ class Cart extends StatefulWidget {
 class _CartState extends State<Cart> {
   bool isLoading = false;
   double sum = 0;
+  String selectedPaymentMethod = 'Stripe'; // Default payment method
 
   @override
   void initState() {
     super.initState();
-    // Initialize Stripe - this should ideally be done in your app initialization
-    // but we're doing it here for simplicity
-    stripe.Stripe.publishableKey =
-        'pk_test_51OuuwVP0XD6u4TvYIUtwCffNiD1ZpOaKxKejORfDqAPjS6KSrwUg3qrd8jyrzYtQW6B6DJG2zScHPurSvn5EA7o500bOPE7N92';
-    // No need to attach listeners as in Razorpay
+    // Initialize Stripe in the payment service - on app startup would be better
+    StripePaymentService.init();
   }
 
   @override
@@ -36,252 +36,119 @@ class _CartState extends State<Cart> {
     ToastContext().init(context);
   }
 
-  Future<void> makeStripePayment() async {
+  // Process payment using Stripe
+  Future<void> processPayment() async {
     setState(() {
       isLoading = true;
     });
 
-    try {
-      // Calculate amount in cents (Stripe requires amount in smallest currency unit)
-      final int amount = (sum * 100).toInt();
+    final paymentService = StripePaymentService();
 
-      // Get the secret key from environment variables
-      final secretKey =
-          dotenv.env['STRIPE_SECRET_KEY'] ??
-          'sk_test_51OuuwVP0XD6u4TvYAOHTI6hGBzvkk596TUI5PLxmb79l7G8Q3xJR5GD3bwueOsejljjNgrrMqyR5OYyHI6N4Pcor00XXSrwjmU';
-
-      // 1. Create payment intent on the server - typically this would be a call to your backend
-      // For testing, we'll simulate this with a direct API call
-      // In production, you should NEVER expose your secret key in the app
-      final response = await http.post(
-        Uri.parse('https://api.stripe.com/v1/payment_intents'),
-        headers: {
-          'Authorization': 'Bearer $secretKey',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'amount': amount.toString(),
-          'currency': 'inr',
-          'payment_method_types[]': 'card',
-        },
-      );
-
-      final jsonResponse = jsonDecode(response.body);
-
-      // 2. Initialize payment sheet
-      await stripe.Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: stripe.SetupPaymentSheetParameters(
-          paymentIntentClientSecret: jsonResponse['client_secret'],
-          merchantDisplayName: 'Dairy App',
-          style: ThemeMode.light,
-        ),
-      );
-
-      // 3. Present payment sheet
-      await stripe.Stripe.instance.presentPaymentSheet();
-
-      // If we reach here, payment was successful
-      handlePaymentSuccess();
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-
-      // Handle payment errors
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void handlePaymentSuccess() {
-    setState(() {
-      isLoading = false;
-    });
-
-    // Show success toast with proper parameters
-    Toast.show(
-      'Payment Successful!',
-      duration: Toast.lengthShort,
-      gravity: Toast.bottom,
-    );
-
-    // Process the order in Firebase
-    _processOrderInFirebase();
-  }
-
-  Future<void> _processOrderInFirebase() async {
-    try {
-      // Get current user
-      final User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw 'Please login to place order';
-      }
-
-      // Get user details from Firestore
-      final userDoc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .get();
-
-      if (!userDoc.exists) {
-        throw 'User profile not found';
-      }
-
-      final userData = userDoc.data() ?? {};
-      final userEmail = currentUser.email ?? '';
-      final userName = userData['name'] ?? '';
-      final userPhone = userData['phone'] ?? '';
-
-      // Get cart items
-      QuerySnapshot cartSnapshot =
-          await FirebaseFirestore.instance.collection('cart').get();
-      if (cartSnapshot.docs.isEmpty) {
-        throw 'Cart is empty';
-      }
-
-      // Get user's pincode
-      final prefs = await SharedPreferences.getInstance();
-      final pinCode = prefs.getString('user_pin_code');
-      if (pinCode == null) {
-        throw 'Please set your delivery location';
-      }
-
-      // Prepare items array and calculate total
-      List<Map<String, dynamic>> items = [];
-      double totalAmount = 0;
-
-      for (var doc in cartSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final price =
-            data['price'] != null
-                ? double.parse(data['price'].toString())
-                : 0.0;
-        final quantity = data['quantity'] ?? 1;
-        totalAmount += price * quantity;
-
-        items.add({
-          'productId': doc.id,
-          'category': data['category'] ?? '',
-          'description': data['description'] ?? '',
-          'imageURL': data['imageUrl'] ?? null,
-          'name': data['name'] ?? '',
-          'price': price,
-          'quantity': quantity,
-          'stock': data['stock'] ?? 0,
-        });
-      }
-
-      // Calculate delivery charge
-      final deliveryCharge = totalAmount >= 500 ? 0 : 40;
-      final finalAmount = totalAmount + deliveryCharge;
-
-      // Generate order number
+    if (selectedPaymentMethod == 'Wallet') {
+      // Process wallet payment
       final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+      final success = await paymentService.processWalletPayment(
+        amount: sum,
+        context: context,
+        orderDescription: 'Payment for order #$orderNumber',
+        orderId: orderNumber,
+      );
 
-      // Create order document in Firestore
-      await FirebaseFirestore.instance.collection('orders').add({
-        // User Information
-        'userId': currentUser.uid,
-        'userEmail': userEmail,
-        'userName': userName,
-        'userPhone': userPhone,
-        'userPinCode': pinCode,
-
-        // Order Information
-        'orderNumber': orderNumber,
-        'timestamp': FieldValue.serverTimestamp(),
-        'orderDate': DateTime.now(),
-        'status': 'Processing',
-        'isActive': true,
-
-        // Items and Amount
-        'items': items,
-        'subtotal': totalAmount,
-        'deliveryCharge': deliveryCharge,
-        'total': finalAmount,
-
-        // Additional Information
-        'paymentMethod': 'Stripe',
-        'paymentStatus': 'Paid',
-        'deliveryAddress': userData['address'] ?? '',
-        'notes': '',
-      });
-
-      // Clear cart after successful order
-      _clearCart();
-
-      // Show success dialog
-      if (mounted) {
-        showDialog(
+      if (success) {
+        // Process the order with Wallet as payment method
+        await paymentService.processOrder(
           context: context,
-          barrierDismissible: false,
-          builder:
-              (context) => AlertDialog(
-                title: Text('Order Placed Successfully'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 60),
-                    SizedBox(height: 16),
-                    Text(
-                      'Your order #$orderNumber has been placed successfully!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Constants.accentColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'You can track your order in the Orders section.',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      Navigator.of(context).pop(); // Return to previous screen
-                    },
-                    child: Text(
-                      'OK',
-                      style: TextStyle(color: Constants.accentColor),
-                    ),
-                  ),
-                ],
+          paymentMethod: 'Wallet', // Pass payment method
+          onOrderComplete: (String orderNumber, double finalAmount) {
+            setState(() {
+              isLoading = false;
+            });
+
+            // Show success dialog
+            StripePaymentService.showOrderSuccessDialog(
+              context: context,
+              orderNumber: orderNumber,
+              totalAmount: finalAmount,
+            );
+          },
+          onError: (String errorMessage) {
+            setState(() {
+              isLoading = false;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to process order: $errorMessage'),
+                backgroundColor: Colors.red,
               ),
+            );
+          },
         );
-      }
-    } catch (error) {
-      // Show error message
-      if (mounted) {
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+
+        // Show insufficient balance message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to process order: $error'),
+            content: Text(
+              'Insufficient wallet balance. Please add money or choose a different payment method.',
+            ),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
         );
       }
-    }
-  }
+    } else {
+      // Process Stripe payment (existing flow)
+      await paymentService.makePayment(
+        amount: sum,
+        context: context,
+        onSuccess: () {
+          // After successful payment, process the order with Stripe as payment method
+          paymentService.processOrder(
+            context: context,
+            paymentMethod: 'Stripe', // Pass payment method explicitly
+            onOrderComplete: (String orderNumber, double finalAmount) {
+              setState(() {
+                isLoading = false;
+              });
 
-  @override
-  void dispose() {
-    super.dispose();
-    // No need to clear Razorpay
+              StripePaymentService.showOrderSuccessDialog(
+                context: context,
+                orderNumber: orderNumber,
+                totalAmount: finalAmount,
+              );
+            },
+            onError: (String errorMessage) {
+              setState(() {
+                isLoading = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to process order: $errorMessage'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+          );
+        },
+        onError: (String errorMessage) {
+          setState(() {
+            isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Payment failed: $errorMessage'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -562,6 +429,160 @@ class _CartState extends State<Cart> {
                       ],
                     ),
                     SizedBox(height: 16),
+                    // Payment method selection
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment Method',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedPaymentMethod = 'Stripe';
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          selectedPaymentMethod == 'Stripe'
+                                              ? Constants.primaryColor
+                                                  .withOpacity(0.1)
+                                              : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color:
+                                            selectedPaymentMethod == 'Stripe'
+                                                ? Constants.primaryColor
+                                                : Colors.grey[300]!,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.credit_card,
+                                          color:
+                                              selectedPaymentMethod == 'Stripe'
+                                                  ? Constants.primaryColor
+                                                  : Colors.grey[600],
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Card',
+                                          style: TextStyle(
+                                            color:
+                                                selectedPaymentMethod ==
+                                                        'Stripe'
+                                                    ? Constants.primaryColor
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedPaymentMethod = 'Wallet';
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          selectedPaymentMethod == 'Wallet'
+                                              ? Constants.primaryColor
+                                                  .withOpacity(0.1)
+                                              : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color:
+                                            selectedPaymentMethod == 'Wallet'
+                                                ? Constants.primaryColor
+                                                : Colors.grey[300]!,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.account_balance_wallet,
+                                          color:
+                                              selectedPaymentMethod == 'Wallet'
+                                                  ? Constants.primaryColor
+                                                  : Colors.grey[600],
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Wallet',
+                                          style: TextStyle(
+                                            color:
+                                                selectedPaymentMethod ==
+                                                        'Wallet'
+                                                    ? Constants.primaryColor
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Show wallet balance if wallet is selected
+                          if (selectedPaymentMethod == 'Wallet')
+                            FutureBuilder<double>(
+                              future: WalletService().getWalletBalance(),
+                              builder: (context, snapshot) {
+                                final balance = snapshot.data ?? 0.0;
+                                final isBalanceSufficient = balance >= sum;
+
+                                return Padding(
+                                  padding: EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Wallet Balance:',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      Text(
+                                        '₹ ${balance.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              isBalanceSufficient
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                     // Checkout button - changed to use Stripe
                     SizedBox(
                       width: double.infinity,
@@ -570,7 +591,7 @@ class _CartState extends State<Cart> {
                             isLoading
                                 ? null
                                 : () {
-                                  makeStripePayment();
+                                  processPayment();
                                 },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Constants.accentColor,

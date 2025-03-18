@@ -23,6 +23,7 @@ class _UserOrdersState extends State<UserOrders> {
           backgroundColor: Constants.primaryColor,
           bottom: TabBar(
             tabs: [Tab(text: 'Active Orders'), Tab(text: 'Past Orders')],
+            labelColor: Colors.white,
           ),
           centerTitle: true,
           elevation: 0,

@@ -9,6 +9,8 @@ import 'package:dairyapp/Screens/profile.dart';
 import 'package:dairyapp/Screens/Settings.dart' as settings;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Constants.dart';
+import '../Services/wallet_service.dart';
+import 'package:dairyapp/Screens/wallet.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -41,6 +43,7 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
       UserOrders(),
       //OrderHistoryPage(),
       UserSubscriptionsPage(),
+      WalletScreen(),
       settings.Settings(onSignedOut: widget.onSignedOut),
     ];
     currentScreen = screens[0];
@@ -317,8 +320,8 @@ class HomeState extends State<HomePage> with SingleTickerProviderStateMixin {
           _buildTabBarItem(
             icon: Icons.settings,
             label: 'Settings',
-            index: 4,
-            screen: screens[4],
+            index: 5,
+            screen: screens[5],
           ),
         ],
       ),
@@ -1221,7 +1224,9 @@ class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
 class CategoriesList extends StatelessWidget {
   final String? pinCode;
 
-  const CategoriesList({Key? key, this.pinCode}) : super(key: key);
+  CategoriesList({Key? key, this.pinCode}) : super(key: key);
+
+  final WalletService walletService = WalletService();
 
   @override
   Widget build(BuildContext context) {
@@ -1393,31 +1398,77 @@ class CategoriesList extends StatelessWidget {
                               fontSize: 14,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                    _buildFeaturedProducts(),
-
-                    Padding(
-                      padding: const EdgeInsets.only(top: 24.0, bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: Constants.primaryColor,
-                              borderRadius: BorderRadius.circular(4),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            child: Divider(
+                              color: Colors.white.withOpacity(0.3),
+                              thickness: 1,
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            "Categories",
-                            style: TextStyle(
-                              fontSize: 20.0,
-                              fontWeight: FontWeight.bold,
-                              color: Constants.textDark,
+                          InkWell(
+                            onTap: () {
+                              final HomeState? homeState =
+                                  context.findAncestorStateOfType<HomeState>();
+                              if (homeState != null) {
+                                homeState.setState(() {
+                                  homeState.currentScreen =
+                                      homeState.screens[4];
+                                  homeState.currentTab = 4;
+                                });
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.account_balance_wallet,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                FutureBuilder<double>(
+                                  future: walletService.getWalletBalance(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Text(
+                                        "Loading wallet...",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      );
+                                    }
+
+                                    final balance = snapshot.data ?? 0.0;
+                                    return Text(
+                                      "Wallet Balance: ₹${balance.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                Spacer(),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(
+                                    "View",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
