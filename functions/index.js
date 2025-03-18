@@ -1,19 +1,61 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+/* eslint-disable */
 
-const {onRequest} = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+admin.initializeApp();
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+exports.sendCustomNotification = functions.https.onCall(
+  async (data, context) => {
+    // Expected input:
+    // data.emails: an array of target user emails
+    // data.title: notification title
+    // data.body: notification body
+    const targetEmails = data.emails;
+    const notificationTitle = data.title;
+    const notificationBody = data.body;
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+    if (!Array.isArray(targetEmails) || targetEmails.length === 0) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "No target emails provided."
+      );
+    }
+
+    // Query Firestore for users with emails matching targetEmails
+    const usersSnapshot = await admin
+      .firestore()
+      .collection("users")
+      .where("email", "in", targetEmails)
+      .get();
+
+    let tokens = [];
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data();
+      if (userData.tokens && Array.isArray(userData.tokens)) {
+        tokens = tokens.concat(userData.tokens);
+      }
+    });
+
+    if (tokens.length === 0) {
+      return {
+        success: false,
+        message: "No tokens found for these users.",
+      };
+    }
+
+    // Build the notification payload
+    const payload = {
+      notification: {
+        title: notificationTitle,
+        body: notificationBody,
+      },
+      data: {
+        type: "custom_notification",
+      },
+    };
+
+    // Send the notification to all tokens
+    const response = await admin.messaging().sendToDevice(tokens, payload);
+    return { success: true, response };
+  }
+);

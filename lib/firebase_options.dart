@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'dairyapp-c0504.firebasestorage.app',
     measurementId: 'G-QJK0N0TPW7',
   );
+
 }

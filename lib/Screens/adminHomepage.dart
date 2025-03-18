@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dairyapp/Screens/AdminOrders.dart';
+import 'package:dairyapp/Screens/AdminOffers.dart';
 import 'AdminSubscriptionsPage.dart';
 
 class AdminHomePage extends StatefulWidget {
@@ -355,6 +356,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => AdminSubscriptionsPage()),
+            );
+          } else if (index == 7) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AdminOffers()),
             );
           }
         });

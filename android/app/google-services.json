@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:847334305425:android:d1342fd20e26df65809930",
+        "android_client_info": {
+          "package_name": "com.example.dairy_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoZTjbTV092O_kLV78UYbrc_M3iFMxy9Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:847334305425:android:1702e13f73e3541d809930",
         "android_client_info": {
           "package_name": "com.example.dairyapp"
