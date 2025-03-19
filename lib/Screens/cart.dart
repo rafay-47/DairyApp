@@ -352,7 +352,6 @@ class _CartState extends State<Cart> {
     );
 
     // Always show the coupon section regardless of available coupons
-    // Remove the check that was hiding the coupon UI when no coupons available
     return Container(
       padding: EdgeInsets.all(16),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),

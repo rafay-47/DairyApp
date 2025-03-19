@@ -18,13 +18,15 @@ class _AdminOrdersState extends State<AdminOrders> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('Order Management'),
-          backgroundColor: Constants.accentColor,
+          backgroundColor: Constants.primaryColor,
           bottom: TabBar(
             tabs: [
               Tab(text: 'Processing'),
               Tab(text: 'Shipped'),
               Tab(text: 'Delivered/Cancelled'),
             ],
+            labelColor: Constants.accentColor,
+            unselectedLabelColor: Colors.white ,
           ),
         ),
         body: TabBarView(

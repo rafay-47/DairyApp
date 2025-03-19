@@ -21,7 +21,7 @@ class RegisterPage extends StatefulWidget {
 
 class RegisterState extends State<RegisterPage> {
   final GlobalKey<FormState> fkey = GlobalKey<FormState>();
-  late String email, password, name, surname, number, cpassword;
+  late String email, password, name, surname, number, cpassword, address;
   late bool passwordShow;
   bool _isAdmin = false;
   bool _isLoading = false;
@@ -59,11 +59,11 @@ class RegisterState extends State<RegisterPage> {
                 SizedBox(height: Constants.textFieldSpacing),
                 _buildMobileField(),
                 SizedBox(height: Constants.textFieldSpacing),
+                _buildAddressField(),
+                SizedBox(height: Constants.textFieldSpacing),
                 _buildPasswordField(),
                 SizedBox(height: Constants.textFieldSpacing),
                 _buildConfirmPasswordField(),
-                SizedBox(height: Constants.textFieldSpacing),
-                _buildAdminToggle(),
                 SizedBox(height: Constants.formSpacing),
                 _buildRegisterButton(),
                 SizedBox(height: Constants.textFieldSpacing),
@@ -157,6 +157,27 @@ class RegisterState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildAddressField() {
+    return FadeAnimation(
+      1.0,
+      _buildTextField(
+        hintText: "Delivery Address",
+        onChanged: (input) => address = input,
+        validator: (input) {
+          if (input == null || input.isEmpty) {
+            return "Enter your address";
+          }
+          if (input.length < 5) {
+            return "Please enter a complete address";
+          }
+          return null;
+        },
+        keyboardType: TextInputType.streetAddress,
+        maxLines: 2,
+      ),
+    );
+  }
+
   Widget _buildPasswordField() {
     return FadeAnimation(
       1.0,
@@ -199,32 +220,6 @@ class RegisterState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildAdminToggle() {
-    return FadeAnimation(
-      1.0,
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: Row(
-          children: [
-            Text(
-              "Admin Account",
-              style: TextStyle(color: Constants.accentColor),
-            ),
-            Spacer(),
-            Switch(
-              value: _isAdmin,
-              activeColor: Constants.secondaryColor,
-              onChanged: (value) {
-                setState(() {
-                  _isAdmin = value;
-                });
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildRegisterButton() {
     return FadeAnimation(
@@ -305,9 +300,10 @@ class RegisterState extends State<RegisterPage> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
   }) {
     return Container(
-      height: 50.0,
+      height: maxLines > 1 ? 80.0 : 50.0,
       padding: EdgeInsets.only(left: 20.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
@@ -325,6 +321,7 @@ class RegisterState extends State<RegisterPage> {
         onChanged: onChanged,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        maxLines: maxLines,
       ),
     );
   }
@@ -395,7 +392,7 @@ class RegisterState extends State<RegisterPage> {
           surname,
           email,
           number,
-          " ",
+          address,
           " ",
           " ",
           true,

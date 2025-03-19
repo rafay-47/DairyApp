@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dairyapp/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
@@ -174,11 +175,7 @@ class _ProductsPageState extends State<ProductsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Products'),
-        backgroundColor: Colors.blue,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        backgroundColor: Constants.primaryColor,
       ),
       // Use SingleChildScrollView to allow scrolling if the content overflows.
       body: SingleChildScrollView(

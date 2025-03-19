@@ -210,7 +210,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text('Subscribe for ${price*duration}'),
+                child: Text('₹${price*duration}'),
               ),
             ],
           ),
