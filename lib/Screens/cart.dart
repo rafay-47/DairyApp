@@ -40,7 +40,7 @@ class _CartState extends State<Cart> {
   Map<String, int> _couponUsageByUser =
       {}; // tracks how many times user used each coupon
 
-  // Delivery address field (minimal addition)
+  // Delivery address text field
   final TextEditingController _addressController = TextEditingController();
 
   @override
@@ -54,7 +54,6 @@ class _CartState extends State<Cart> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Initialize Toast here when context is fully ready
     ToastContext().init(context);
   }
 
@@ -237,9 +236,17 @@ class _CartState extends State<Cart> {
     return applicable;
   }
 
-  // Process payment using Stripe or Wallet after validating delivery address.
+  // 1) Update user's address in Firestore
+  // 2) Then proceed with existing payment logic
   Future<void> processPayment() async {
-    // Minimal validation for delivery address field.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please login to place order')));
+      return;
+    }
+
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please enter a delivery address')),
@@ -251,58 +258,61 @@ class _CartState extends State<Cart> {
       isLoading = true;
     });
 
-    final paymentAmount = finalAmount;
-    final paymentService = StripePaymentService();
-
-    if (selectedPaymentMethod == 'Wallet') {
-      // Process wallet payment
-      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-      final success = await paymentService.processWalletPayment(
-        amount: paymentAmount,
-        context: context,
-        orderDescription: 'Payment for order #$orderNumber',
-        orderId: orderNumber,
+    try {
+      // 1) Update the user's Address field in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'deliveryAddress': _addressController.text.trim()},
       );
 
-      if (success) {
-        // Process the order with Wallet as payment method
-        await paymentService.processOrder(
+      // 2) Proceed with payment logic
+      final paymentAmount = finalAmount;
+      final paymentService = StripePaymentService();
+
+      if (selectedPaymentMethod == 'Wallet') {
+        // Process wallet payment
+        final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+        final success = await paymentService.processWalletPayment(
+          amount: paymentAmount,
           context: context,
-          onOrderComplete: (orderNumber, totalAmount) {
-            StripePaymentService.showOrderSuccessDialog(
-              context: context,
-              orderNumber: orderNumber,
-              totalAmount: totalAmount,
-            );
-          },
-          onError: (error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to process order: $error'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 3),
+          orderDescription: 'Payment for order #$orderNumber',
+          orderId: orderNumber,
+        );
+
+        if (success) {
+          // Process the order with Wallet as payment method
+          await paymentService.processOrder(
+            context: context,
+            onOrderComplete: (orderNumber, totalAmount) {
+              StripePaymentService.showOrderSuccessDialog(
+                context: context,
+                orderNumber: orderNumber,
+                totalAmount: totalAmount,
+              );
+            },
+            onError: (error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to process order: $error'),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            },
+            paymentMethod: 'Wallet',
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Insufficient wallet balance. Please add money or choose a different payment method.',
               ),
-            );
-          },
-          paymentMethod: 'Wallet',
-        );
-      } else {
-        setState(() {
-          isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Insufficient wallet balance. Please add money or choose a different payment method.',
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } else {
-      // Process Stripe payment
-      try {
+          );
+        }
+      } else {
+        // Process Stripe payment
         await paymentService.makePayment(
           amount: paymentAmount,
           context: context,
@@ -330,9 +340,6 @@ class _CartState extends State<Cart> {
             );
           },
           onError: (error) {
-            setState(() {
-              isLoading = false;
-            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Payment failed: $error'),
@@ -341,17 +348,15 @@ class _CartState extends State<Cart> {
             );
           },
         );
-      } catch (e) {
-        setState(() {
-          isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -662,7 +667,7 @@ class _CartState extends State<Cart> {
             return _buildEmptyCart();
           }
 
-          // Calculate subtotal
+          // 1. Calculate subtotal
           double totalAmount = 0;
           for (var item in cartItems) {
             final data = item.data() as Map<String, dynamic>;
@@ -675,10 +680,10 @@ class _CartState extends State<Cart> {
           }
           subtotal = totalAmount;
 
-          // Base delivery logic
+          // 2. Base delivery logic
           deliveryCharge = subtotal >= 500 ? 0 : 40;
 
-          // Apply coupon discount
+          // 3. Apply coupon discount
           couponDiscount = 0;
           if (_selectedCoupon != null) {
             final coupon = _selectedCoupon!;
@@ -695,16 +700,22 @@ class _CartState extends State<Cart> {
               }
             } else if (type == 'Fixed') {
               couponDiscount = discountVal;
-              if (couponDiscount > subtotal) couponDiscount = subtotal;
+              if (couponDiscount > subtotal) {
+                couponDiscount = subtotal;
+              }
             } else if (type == 'Free Delivery') {
+              // Zero out the delivery
               deliveryCharge = 0;
               if (discountVal > 0) {
                 couponDiscount = discountVal;
-                if (couponDiscount > subtotal) couponDiscount = subtotal;
+                if (couponDiscount > subtotal) {
+                  couponDiscount = subtotal;
+                }
               }
             }
           }
 
+          // 4. Final total
           final computedTotal = subtotal + deliveryCharge - couponDiscount;
           finalAmount = computedTotal < 0 ? 0 : computedTotal;
           sum = finalAmount;
@@ -712,6 +723,7 @@ class _CartState extends State<Cart> {
           return SingleChildScrollView(
             child: Column(
               children: [
+                // Cart items
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -739,6 +751,7 @@ class _CartState extends State<Cart> {
                         padding: const EdgeInsets.all(12.0),
                         child: Row(
                           children: [
+                            // Product Image
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
@@ -761,6 +774,7 @@ class _CartState extends State<Cart> {
                               ),
                             ),
                             SizedBox(width: 16),
+                            // Product Details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -781,6 +795,7 @@ class _CartState extends State<Cart> {
                                     ),
                                   ),
                                   SizedBox(height: 8),
+                                  // Quantity controls
                                   Row(
                                     children: [
                                       InkWell(
@@ -847,6 +862,7 @@ class _CartState extends State<Cart> {
                                 ],
                               ),
                             ),
+                            // Delete button
                             IconButton(
                               icon: Icon(
                                 Icons.delete_outline,
@@ -862,7 +878,11 @@ class _CartState extends State<Cart> {
                     );
                   },
                 ),
+
+                // Coupon selection section
                 _buildCouponSelection(cartItems),
+
+                // Order summary and checkout
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -879,9 +899,9 @@ class _CartState extends State<Cart> {
                       top: Radius.circular(24),
                     ),
                   ),
-                  // Minimal change: just added the delivery address field below the payment methods.
                   child: Column(
                     children: [
+                      // Order summary
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -914,6 +934,7 @@ class _CartState extends State<Cart> {
                           ),
                         ],
                       ),
+                      // Add coupon discount row if applicable
                       if (couponDiscount > 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -953,6 +974,7 @@ class _CartState extends State<Cart> {
                         ],
                       ),
                       SizedBox(height: 16),
+                      // Payment method selection
                       Padding(
                         padding: EdgeInsets.only(bottom: 16),
                         child: Column(
@@ -1073,6 +1095,7 @@ class _CartState extends State<Cart> {
                                 ),
                               ],
                             ),
+                            // Show wallet balance if wallet is selected
                             if (selectedPaymentMethod == 'Wallet')
                               FutureBuilder<double>(
                                 future: WalletService().getWalletBalance(),
@@ -1080,6 +1103,7 @@ class _CartState extends State<Cart> {
                                   final balance = snapshot.data ?? 0.0;
                                   final isBalanceSufficient =
                                       balance >= finalAmount;
+
                                   return Padding(
                                     padding: EdgeInsets.only(top: 8),
                                     child: Row(
@@ -1110,7 +1134,7 @@ class _CartState extends State<Cart> {
                           ],
                         ),
                       ),
-                      // Added Delivery Address field with validation.
+                      // Delivery Address field (no form, just a text field)
                       TextField(
                         controller: _addressController,
                         decoration: InputDecoration(
@@ -1122,6 +1146,7 @@ class _CartState extends State<Cart> {
                         ),
                       ),
                       SizedBox(height: 16),
+                      // Checkout button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
