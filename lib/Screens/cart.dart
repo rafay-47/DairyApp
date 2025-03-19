@@ -11,7 +11,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dairyapp/Screens/payment.dart';
 import 'package:dairyapp/Services/wallet_service.dart';
 
-// Enhanced Cart page with modern UI
 class Cart extends StatefulWidget {
   @override
   _CartState createState() => _CartState();
@@ -41,6 +40,9 @@ class _CartState extends State<Cart> {
   Map<String, int> _couponUsageByUser =
       {}; // tracks how many times user used each coupon
 
+  // Delivery address field (minimal addition)
+  final TextEditingController _addressController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +56,12 @@ class _CartState extends State<Cart> {
     super.didChangeDependencies();
     // Initialize Toast here when context is fully ready
     ToastContext().init(context);
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
   }
 
   /// Fetch user info, coupon usage, and all coupons
@@ -229,8 +237,16 @@ class _CartState extends State<Cart> {
     return applicable;
   }
 
-  // Process payment using Stripe or Wallet
+  // Process payment using Stripe or Wallet after validating delivery address.
   Future<void> processPayment() async {
+    // Minimal validation for delivery address field.
+    if (_addressController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a delivery address')),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -274,8 +290,6 @@ class _CartState extends State<Cart> {
         setState(() {
           isLoading = false;
         });
-
-        // Show insufficient balance message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -319,7 +333,6 @@ class _CartState extends State<Cart> {
             setState(() {
               isLoading = false;
             });
-
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Payment failed: $error'),
@@ -332,7 +345,6 @@ class _CartState extends State<Cart> {
         setState(() {
           isLoading = false;
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Payment failed: ${e.toString()}'),
@@ -351,7 +363,6 @@ class _CartState extends State<Cart> {
       cartDelivery: deliveryCharge,
     );
 
-    // Always show the coupon section regardless of available coupons
     return Container(
       padding: EdgeInsets.all(16),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -388,7 +399,6 @@ class _CartState extends State<Cart> {
             ],
           ),
           SizedBox(height: 8),
-          // Show dropdown only if there are applicable coupons
           _applicableCoupons.isEmpty
               ? Container(
                 padding: EdgeInsets.all(12),
@@ -413,27 +423,26 @@ class _CartState extends State<Cart> {
                   hintText: 'Select a coupon',
                 ),
                 value: _selectedCoupon?['id'],
-                items: [
-                  ..._applicableCoupons.map((coupon) {
-                    final String code = coupon['code'] ?? 'UNKNOWN';
-                    final String type = coupon['type'] ?? 'Unknown';
-                    final dynamic discount = coupon['discount'];
+                items:
+                    _applicableCoupons.map((coupon) {
+                      final String code = coupon['code'] ?? 'UNKNOWN';
+                      final String type = coupon['type'] ?? 'Unknown';
+                      final dynamic discount = coupon['discount'];
 
-                    String displayText = '$code - ';
-                    if (type == 'Percentage') {
-                      displayText += '$discount% off';
-                    } else if (type == 'Fixed') {
-                      displayText += '₹$discount off';
-                    } else if (type == 'Free Delivery') {
-                      displayText += 'Free Delivery';
-                    }
+                      String displayText = '$code - ';
+                      if (type == 'Percentage') {
+                        displayText += '$discount% off';
+                      } else if (type == 'Fixed') {
+                        displayText += '₹$discount off';
+                      } else if (type == 'Free Delivery') {
+                        displayText += 'Free Delivery';
+                      }
 
-                    return DropdownMenuItem<String>(
-                      value: coupon['id'],
-                      child: Text(displayText),
-                    );
-                  }).toList(),
-                ],
+                      return DropdownMenuItem<String>(
+                        value: coupon['id'],
+                        child: Text(displayText),
+                      );
+                    }).toList(),
                 onChanged: (String? couponId) {
                   if (couponId != null) {
                     final selectedCoupon = _applicableCoupons.firstWhere(
@@ -488,7 +497,6 @@ class _CartState extends State<Cart> {
             ),
           if (type == 'Fixed') Text('₹$discountVal off your order'),
           if (type == 'Percentage') Text('$discountVal% off your order'),
-
           SizedBox(height: 4),
           Text(
             'You save: ₹${couponDiscount.toStringAsFixed(2)}',
@@ -651,10 +659,10 @@ class _CartState extends State<Cart> {
           }
           final cartItems = snapshot.data!.docs;
           if (cartItems.isEmpty) {
-            _buildEmptyCart();
+            return _buildEmptyCart();
           }
 
-          // 1. Calculate subtotal
+          // Calculate subtotal
           double totalAmount = 0;
           for (var item in cartItems) {
             final data = item.data() as Map<String, dynamic>;
@@ -667,10 +675,10 @@ class _CartState extends State<Cart> {
           }
           subtotal = totalAmount;
 
-          // 2. Base delivery logic
+          // Base delivery logic
           deliveryCharge = subtotal >= 500 ? 0 : 40;
 
-          // 3. Apply coupon discount
+          // Apply coupon discount
           couponDiscount = 0;
           if (_selectedCoupon != null) {
             final coupon = _selectedCoupon!;
@@ -687,34 +695,26 @@ class _CartState extends State<Cart> {
               }
             } else if (type == 'Fixed') {
               couponDiscount = discountVal;
-              if (couponDiscount > subtotal) {
-                couponDiscount = subtotal;
-              }
+              if (couponDiscount > subtotal) couponDiscount = subtotal;
             } else if (type == 'Free Delivery') {
-              // Zero out the delivery
               deliveryCharge = 0;
-              // If discountVal > 0, apply that to the subtotal
               if (discountVal > 0) {
                 couponDiscount = discountVal;
-                if (couponDiscount > subtotal) {
-                  couponDiscount = subtotal;
-                }
+                if (couponDiscount > subtotal) couponDiscount = subtotal;
               }
             }
           }
 
-          // 4. Final total
           final computedTotal = subtotal + deliveryCharge - couponDiscount;
           finalAmount = computedTotal < 0 ? 0 : computedTotal;
-
-          // Update sum for payment processing
           sum = finalAmount;
 
-          return Column(
-            children: [
-              // Cart items
-              Expanded(
-                child: ListView.builder(
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.all(16),
                   itemCount: cartItems.length,
                   itemBuilder: (context, index) {
@@ -739,7 +739,6 @@ class _CartState extends State<Cart> {
                         padding: const EdgeInsets.all(12.0),
                         child: Row(
                           children: [
-                            // Product Image
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
@@ -762,7 +761,6 @@ class _CartState extends State<Cart> {
                               ),
                             ),
                             SizedBox(width: 16),
-                            // Product Details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,7 +781,6 @@ class _CartState extends State<Cart> {
                                     ),
                                   ),
                                   SizedBox(height: 8),
-                                  // Quantity controls
                                   Row(
                                     children: [
                                       InkWell(
@@ -850,7 +847,6 @@ class _CartState extends State<Cart> {
                                 ],
                               ),
                             ),
-                            // Delete button
                             IconButton(
                               icon: Icon(
                                 Icons.delete_outline,
@@ -866,285 +862,297 @@ class _CartState extends State<Cart> {
                     );
                   },
                 ),
-              ),
-
-              // Coupon selection section
-              _buildCouponSelection(cartItems),
-
-              // Order summary and checkout
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      spreadRadius: 1,
-                      blurRadius: 10,
-                      offset: Offset(0, -5),
+                _buildCouponSelection(cartItems),
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        spreadRadius: 1,
+                        blurRadius: 10,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
                     ),
-                  ],
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Column(
-                  children: [
-                    // Order summary
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Items (${cartItems.length})',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Text(
-                          '₹${subtotal.toStringAsFixed(2)}',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Delivery',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        Text(
-                          deliveryCharge == 0
-                              ? 'FREE'
-                              : '₹${deliveryCharge.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: deliveryCharge == 0 ? Colors.green : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Add coupon discount row if applicable
-                    if (couponDiscount > 0)
+                  ),
+                  // Minimal change: just added the delivery address field below the payment methods.
+                  child: Column(
+                    children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Coupon Discount',
+                            'Items (${cartItems.length})',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                           Text(
-                            '-₹${couponDiscount.toStringAsFixed(2)}',
+                            '₹${subtotal.toStringAsFixed(2)}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Delivery',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          Text(
+                            deliveryCharge == 0
+                                ? 'FREE'
+                                : '₹${deliveryCharge.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                              color: deliveryCharge == 0 ? Colors.green : null,
                             ),
                           ),
                         ],
                       ),
-                    Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total Amount',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                      if (couponDiscount > 0)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Coupon Discount',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                            Text(
+                              '-₹${couponDiscount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '₹${finalAmount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Constants.accentColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    // Payment method selection
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Payment Method',
+                            'Total Amount',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPaymentMethod = 'Stripe';
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedPaymentMethod == 'Stripe'
-                                              ? Constants.primaryColor
-                                                  .withOpacity(0.1)
-                                              : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
+                          Text(
+                            '₹${finalAmount.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Constants.accentColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Payment Method',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedPaymentMethod = 'Stripe';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
                                         color:
                                             selectedPaymentMethod == 'Stripe'
                                                 ? Constants.primaryColor
-                                                : Colors.grey[300]!,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.credit_card,
+                                                    .withOpacity(0.1)
+                                                : Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
                                           color:
                                               selectedPaymentMethod == 'Stripe'
                                                   ? Constants.primaryColor
-                                                  : Colors.grey[600],
+                                                  : Colors.grey[300]!,
                                         ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Card',
-                                          style: TextStyle(
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.credit_card,
                                             color:
                                                 selectedPaymentMethod ==
                                                         'Stripe'
                                                     ? Constants.primaryColor
                                                     : Colors.grey[600],
                                           ),
-                                        ),
-                                      ],
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Card',
+                                            style: TextStyle(
+                                              color:
+                                                  selectedPaymentMethod ==
+                                                          'Stripe'
+                                                      ? Constants.primaryColor
+                                                      : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPaymentMethod = 'Wallet';
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedPaymentMethod == 'Wallet'
-                                              ? Constants.primaryColor
-                                                  .withOpacity(0.1)
-                                              : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedPaymentMethod = 'Wallet';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
                                         color:
                                             selectedPaymentMethod == 'Wallet'
                                                 ? Constants.primaryColor
-                                                : Colors.grey[300]!,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.account_balance_wallet,
+                                                    .withOpacity(0.1)
+                                                : Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
                                           color:
                                               selectedPaymentMethod == 'Wallet'
                                                   ? Constants.primaryColor
-                                                  : Colors.grey[600],
+                                                  : Colors.grey[300]!,
                                         ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Wallet',
-                                          style: TextStyle(
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.account_balance_wallet,
                                             color:
                                                 selectedPaymentMethod ==
                                                         'Wallet'
                                                     ? Constants.primaryColor
                                                     : Colors.grey[600],
                                           ),
-                                        ),
-                                      ],
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Wallet',
+                                            style: TextStyle(
+                                              color:
+                                                  selectedPaymentMethod ==
+                                                          'Wallet'
+                                                      ? Constants.primaryColor
+                                                      : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-
-                          // Show wallet balance if wallet is selected
-                          if (selectedPaymentMethod == 'Wallet')
-                            FutureBuilder<double>(
-                              future: WalletService().getWalletBalance(),
-                              builder: (context, snapshot) {
-                                final balance = snapshot.data ?? 0.0;
-                                final isBalanceSufficient =
-                                    balance >= finalAmount;
-
-                                return Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Wallet Balance:',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      Text(
-                                        '₹ ${balance.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              isBalanceSufficient
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                              ],
                             ),
-                        ],
+                            if (selectedPaymentMethod == 'Wallet')
+                              FutureBuilder<double>(
+                                future: WalletService().getWalletBalance(),
+                                builder: (context, snapshot) {
+                                  final balance = snapshot.data ?? 0.0;
+                                  final isBalanceSufficient =
+                                      balance >= finalAmount;
+                                  return Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Wallet Balance:',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        Text(
+                                          '₹ ${balance.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                isBalanceSufficient
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    // Checkout button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : () => processPayment(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Constants.accentColor,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      // Added Delivery Address field with validation.
+                      TextField(
+                        controller: _addressController,
+                        decoration: InputDecoration(
+                          labelText: 'Delivery Address',
+                          hintText: 'Enter your delivery address',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child:
-                            isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
-                                : Text(
-                                  'PROCEED TO CHECKOUT',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : () => processPayment(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Constants.accentColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child:
+                              isLoading
+                                  ? CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                  : Text(
+                                    'PROCEED TO CHECKOUT',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
