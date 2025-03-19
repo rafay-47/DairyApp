@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dairyapp/Screens/cart.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final String productId;
@@ -25,12 +26,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   bool _isLoading = false;
 
-  // Subscribe to a product using the selected plan
-  Future<void> _subscribeToProduct(String planName, int duration) async {
+  // Add subscription to cart instead of directly subscribing
+  Future<void> _addSubscriptionToCart(String planName, int duration) async {
     if (_currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please login to subscribe')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please login to subscribe')));
       return;
     }
 
@@ -39,22 +40,28 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     });
 
     try {
-      final now = DateTime.now();
-      final endDate = now.add(Duration(days: duration));
+      // Calculate the subscription price
+      final subscriptionPrice = widget.productPrice * duration;
 
-      await _firestore
-          .collection('users')
-          .doc(_currentUser!.uid)
-          .collection('product_subscriptions')
-          .add({
+      // Create a subscription cart item
+      final subscriptionItem = {
         'productId': widget.productId,
-        'productName': widget.productName,
+        'name': '${widget.productName} subscription for  $duration days',
+        'description': widget.productDescription,
+        'price': subscriptionPrice,
+        'quantity': 1,
+        'type': 'subscription', // Mark as subscription type
         'planName': planName,
-        'startDate': now,
-        'endDate': endDate,
-        'status': 'active',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'duration': duration,
+        'addedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Generate a unique ID for the cart item
+      final String cartItemId =
+          'sub_${widget.productId}_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Add to cart collection
+      await _firestore.collection('cart').doc(cartItemId).set(subscriptionItem);
 
       setState(() {
         _isLoading = false;
@@ -62,8 +69,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Successfully subscribed to $planName plan for ${widget.productName}',
+          content: Text('$planName subscription added to cart'),
+          action: SnackBarAction(
+            label: 'VIEW CART',
+            onPressed: () {
+              Navigator.of(context).pop(); // Close subscription dialog
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (context) => Cart()));
+            },
           ),
         ),
       );
@@ -73,7 +87,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to subscribe: $e')),
+        SnackBar(content: Text('Failed to add subscription to cart: $e')),
       );
     }
   }
@@ -89,101 +103,125 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.8,
           maxWidth: 400,
         ),
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header with product name and description
-                    Text(
-                      widget.productName,
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 10),
-                    Text(widget.productDescription),
-                    SizedBox(height: 20),
-                    // Subscription plans
-                    Text(
-                      'Choose your subscription plan:',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _buildPlanCard('Weekly', 7, 'Every 7 days', widget.productPrice),
-                        SizedBox(width: 10),
-                        _buildPlanCard('Monthly', 30, 'Every 30 days', widget.productPrice),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Display active subscriptions
-                    Text(
-                      'Your Subscriptions:',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    SizedBox(height: 10),
-                    Container(
-                      height: 200,
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: _firestore
-                            .collection('users')
-                            .doc(_currentUser!.uid)
-                            .collection('product_subscriptions')
-                            .where('productId', isEqualTo: widget.productId)
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return Center(child: CircularProgressIndicator());
-                          }
-                          final subscriptions = snapshot.data!.docs;
-                          if (subscriptions.isEmpty) {
-                            return Center(child: Text('No subscriptions found.'));
-                          }
-                          return ListView.builder(
-                            itemCount: subscriptions.length,
-                            itemBuilder: (context, index) {
-                              final subscription = subscriptions[index];
-                              return Card(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                elevation: 2,
-                                margin: EdgeInsets.symmetric(vertical: 5),
-                                child: ListTile(
-                                  title: Text(subscription['planName']),
-                                  subtitle: Text(
-                                    'Ends on: ${subscription['endDate'].toDate().toLocal().toString().split(' ')[0]}',
-                                  ),
-                                  
-                                ),
+        child:
+            _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with product name and description
+                      Text(
+                        widget.productName,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(widget.productDescription),
+                      SizedBox(height: 20),
+                      // Subscription plans
+                      Text(
+                        'Choose your subscription plan:',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _buildPlanCard(
+                            'Weekly',
+                            7,
+                            'Every 7 days',
+                            widget.productPrice,
+                          ),
+                          SizedBox(width: 10),
+                          _buildPlanCard(
+                            'Monthly',
+                            30,
+                            'Every 30 days',
+                            widget.productPrice,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      // Display active subscriptions
+                      Text(
+                        'Your Subscriptions:',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 10),
+                      Container(
+                        height: 200,
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream:
+                              _firestore
+                                  .collection('users')
+                                  .doc(_currentUser!.uid)
+                                  .collection('product_subscriptions')
+                                  .where(
+                                    'productId',
+                                    isEqualTo: widget.productId,
+                                  )
+                                  .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Center(child: CircularProgressIndicator());
+                            }
+                            final subscriptions = snapshot.data!.docs;
+                            if (subscriptions.isEmpty) {
+                              return Center(
+                                child: Text('No subscriptions found.'),
                               );
-                            },
-                          );
-                        },
+                            }
+                            return ListView.builder(
+                              itemCount: subscriptions.length,
+                              itemBuilder: (context, index) {
+                                final subscription = subscriptions[index];
+                                return Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 2,
+                                  margin: EdgeInsets.symmetric(vertical: 5),
+                                  child: ListTile(
+                                    title: Text(subscription['planName']),
+                                    subtitle: Text(
+                                      'Ends on: ${subscription['endDate'].toDate().toLocal().toString().split(' ')[0]}',
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 10),
-                    // Close button
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: Text('Close'),
+                      SizedBox(height: 10),
+                      // Close button
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text('Close'),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
       ),
     );
   }
 
   // Builds a modern-looking card for each subscription plan
-  Widget _buildPlanCard(String planName, int duration, String subtitle, double price) {
+  Widget _buildPlanCard(
+    String planName,
+    int duration,
+    String subtitle,
+    double price,
+  ) {
     return Expanded(
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -204,13 +242,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
               ),
               SizedBox(height: 10),
               ElevatedButton(
-                onPressed: () => _subscribeToProduct(planName, duration),
+                // Update the onPressed to add to cart instead of direct subscription
+                onPressed: () => _addSubscriptionToCart(planName, duration),
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text('₹${price*duration}'),
+                child: Text('₹${price * duration}'),
               ),
             ],
           ),

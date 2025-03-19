@@ -174,8 +174,9 @@ class StripePaymentService {
 
       final userData = userDoc.data() ?? {};
       final userEmail = currentUser.email ?? '';
-      final userName = userData['name'] ?? '';
-      final userPhone = userData['phone'] ?? '';
+      final userName = userData['Name'] ?? '';
+      final userPhone = userData['Number'] ?? '';
+      final userAddress = userData['Address'] ?? '';
 
       // Get cart items
       QuerySnapshot cartSnapshot =
@@ -193,6 +194,7 @@ class StripePaymentService {
 
       // Prepare items array and calculate total
       List<Map<String, dynamic>> items = [];
+      List<Map<String, dynamic>> subscriptionItems = [];
       double totalAmount = 0;
 
       for (var doc in cartSnapshot.docs) {
@@ -204,15 +206,30 @@ class StripePaymentService {
         final quantity = data['quantity'] ?? 1;
         totalAmount += price * quantity;
 
+        // Check if this is a subscription item
+        if (data['type'] == 'subscription') {
+          subscriptionItems.add({
+            'subscriptionId': doc.id,
+            'productId': data['productId'] ?? '',
+            'productName': data['productName'] ?? '',
+            'planName': data['planName'] ?? '',
+            'duration': data['duration'] ?? 30,
+            'price': price,
+          });
+        }
+
         items.add({
-          'productId': doc.id,
+          'productId':
+              data['type'] == 'subscription' ? data['productId'] : doc.id,
           'category': data['category'] ?? '',
           'description': data['description'] ?? '',
           'imageURL': data['imageUrl'] ?? null,
-          'name': data['name'] ?? '',
+          'name': data['productName'] ?? data['name'] ?? '',
           'price': price,
           'quantity': quantity,
-          'stock': data['stock'] ?? 0,
+          'type': data['type'] ?? 'product',
+          'planName': data['planName'] ?? '',
+          'duration': data['duration'] ?? 0,
         });
       }
 
@@ -250,7 +267,7 @@ class StripePaymentService {
             // Additional Information
             'paymentMethod': paymentMethod,
             'paymentStatus': 'Paid',
-            'deliveryAddress': userData['address'] ?? '',
+            'deliveryAddress': userAddress,
             'notes': '',
           });
 
@@ -263,6 +280,15 @@ class StripePaymentService {
         status: 'Completed',
       );
 
+      // Process subscriptions if present
+      if (subscriptionItems.isNotEmpty) {
+        await _processSubscriptions(
+          subscriptionItems: subscriptionItems,
+          userId: currentUser.uid,
+          orderNumber: orderNumber,
+        );
+      }
+
       // Clear cart after successful order
       await _clearCart();
 
@@ -271,6 +297,53 @@ class StripePaymentService {
     } catch (error) {
       // Call the error callback
       onError(error.toString());
+    }
+  }
+
+  // New method to process subscriptions
+  Future<void> _processSubscriptions({
+    required List<Map<String, dynamic>> subscriptionItems,
+    required String userId,
+    required String orderNumber,
+  }) async {
+    final now = DateTime.now();
+
+    for (var item in subscriptionItems) {
+      final productId = item['productId'];
+      final productName = item['productName'];
+      final planName = item['planName'];
+      final duration = item['duration'];
+      final endDate = now.add(Duration(days: duration));
+
+      // Create subscription record
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('product_subscriptions')
+          .add({
+            'productId': productId,
+            'productName': productName,
+            'planName': planName,
+            'startDate': now,
+            'endDate': endDate,
+            'status': 'active',
+            'orderNumber': orderNumber,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      // You could also add to a central subscriptions collection if needed
+      await FirebaseFirestore.instance.collection('subscriptions').add({
+        'userId': userId,
+        'productId': productId,
+        'productName': productName,
+        'planName': planName,
+        'startDate': now,
+        'endDate': endDate,
+        'duration': duration,
+        'status': 'active',
+        'orderNumber': orderNumber,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 
