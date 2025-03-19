@@ -254,24 +254,24 @@ class _AdminOffersState extends State<AdminOffers>
       return 'Maximum discount must be greater than 0';
     }
 
-    if (_selectedCouponType == 'Percentage' &&
-        _discountPercentController.text.isNotEmpty) {
-      final double? discountPercent = double.tryParse(
-        _discountPercentController.text,
-      );
-      if (discountPercent != null && _minPurchaseController.text.isNotEmpty) {
-        final double? minPurchase = double.tryParse(
-          _minPurchaseController.text,
-        );
-        if (minPurchase != null) {
-          final double calculatedMaxDiscount =
-              minPurchase * discountPercent / 100;
-          if (maxDiscount > calculatedMaxDiscount) {
-            return 'Max discount exceeds the calculated maximum (${calculatedMaxDiscount.toStringAsFixed(2)})';
-          }
-        }
-      }
-    }
+    // if (_selectedCouponType == 'Percentage' &&
+    //     _discountPercentController.text.isNotEmpty) {
+    //   final double? discountPercent = double.tryParse(
+    //     _discountPercentController.text,
+    //   );
+    //   if (discountPercent != null && _minPurchaseController.text.isNotEmpty) {
+    //     final double? minPurchase = double.tryParse(
+    //       _minPurchaseController.text,
+    //     );
+    //     if (minPurchase != null) {
+    //       final double calculatedMaxDiscount =
+    //           minPurchase * discountPercent / 100;
+    //       if (maxDiscount > calculatedMaxDiscount) {
+    //         return 'Max discount exceeds the calculated maximum (${calculatedMaxDiscount.toStringAsFixed(2)})';
+    //       }
+    //     }
+    //   }
+    // }
 
     return null;
   }

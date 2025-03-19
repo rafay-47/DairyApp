@@ -8,19 +8,16 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:toast/toast.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:dairyapp/Screens/payment.dart';
-import 'package:dairyapp/Services/wallet_service.dart';
 
-// Enhanced Cart page with modern UI
 class Cart extends StatefulWidget {
+  const Cart({Key? key}) : super(key: key);
+
   @override
   _CartState createState() => _CartState();
 }
 
 class _CartState extends State<Cart> {
   bool isLoading = false;
-  double sum = 0;
-  String selectedPaymentMethod = 'Stripe'; // Default payment method
 
   // Price calculations
   double subtotal = 0; // sum of item prices × quantity
@@ -44,15 +41,15 @@ class _CartState extends State<Cart> {
   @override
   void initState() {
     super.initState();
-    // Initialize Stripe in the payment service
-    StripePaymentService.init();
+    // Initialize Stripe
+    stripe.Stripe.publishableKey =
+        'pk_test_51OuuwVP0XD6u4TvYIUtwCffNiD1ZpOaKxKejORfDqAPjS6KSrwUg3qrd8jyrzYtQW6B6DJG2zScHPurSvn5EA7o500bOPE7N92';
     _fetchInitialData();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Initialize Toast here when context is fully ready
     ToastContext().init(context);
   }
 
@@ -229,286 +226,278 @@ class _CartState extends State<Cart> {
     return applicable;
   }
 
-  // Process payment using Stripe or Wallet
-  Future<void> processPayment() async {
+  /// Stripe Payment
+  Future<void> makeStripePayment() async {
     setState(() {
       isLoading = true;
     });
+    try {
+      final int amount = (finalAmount * 100).toInt();
+      final secretKey =
+          dotenv.env['STRIPE_SECRET_KEY'] ??
+          'sk_test_51OuuwVP0XD6u4TvYAOHTI6hGBzvkk596TUI5PLxmb79l7G8Q3xJR5GD3bwueOsejljjNgrrMqyR5OYyHI6N4Pcor00XXSrwjmU';
 
-    final paymentAmount = finalAmount;
-    final paymentService = StripePaymentService();
-
-    if (selectedPaymentMethod == 'Wallet') {
-      // Process wallet payment
-      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-      final success = await paymentService.processWalletPayment(
-        amount: paymentAmount,
-        context: context,
-        orderDescription: 'Payment for order #$orderNumber',
-        orderId: orderNumber,
+      final response = await http.post(
+        Uri.parse('https://api.stripe.com/v1/payment_intents'),
+        headers: {
+          'Authorization': 'Bearer $secretKey',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'amount': amount.toString(),
+          'currency': 'inr',
+          'payment_method_types[]': 'card',
+        },
       );
 
-      if (success) {
-        // Process the order with Wallet as payment method
-        await paymentService.processOrder(
-          context: context,
-          onOrderComplete: (orderNumber, totalAmount) {
-            StripePaymentService.showOrderSuccessDialog(
-              context: context,
-              orderNumber: orderNumber,
-              totalAmount: totalAmount,
-            );
-          },
-          onError: (error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to process order: $error'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          },
-          paymentMethod: 'Wallet',
-        );
-      } else {
-        setState(() {
-          isLoading = false;
-        });
+      final jsonResponse = jsonDecode(response.body);
+      await stripe.Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: stripe.SetupPaymentSheetParameters(
+          paymentIntentClientSecret: jsonResponse['client_secret'],
+          merchantDisplayName: 'Dairy App',
+          style: ThemeMode.light,
+        ),
+      );
+      await stripe.Stripe.instance.presentPaymentSheet();
+      handlePaymentSuccess();
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
-        // Show insufficient balance message
+  void handlePaymentSuccess() {
+    setState(() {
+      isLoading = false;
+    });
+    Toast.show(
+      'Payment Successful!',
+      duration: Toast.lengthShort,
+      gravity: Toast.bottom,
+    );
+    _processOrderInFirestore();
+  }
+
+  /// Process the order in Firestore
+  Future<void> _processOrderInFirestore() async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw 'Please login to place order';
+
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .get();
+      if (!userDoc.exists) throw 'User profile not found';
+
+      final userData = userDoc.data() ?? {};
+      final userEmail = currentUser.email ?? '';
+      final userName = userData['name'] ?? '';
+      final userPhone = userData['phone'] ?? '';
+
+      final cartSnap =
+          await FirebaseFirestore.instance.collection('cart').get();
+      if (cartSnap.docs.isEmpty) throw 'Cart is empty';
+
+      final prefs = await SharedPreferences.getInstance();
+      final pinCode = prefs.getString('user_pin_code');
+      if (pinCode == null) throw 'Please set your delivery location';
+
+      // Build items array
+      List<Map<String, dynamic>> items = [];
+      double totalAmount = 0;
+      for (var doc in cartSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final price =
+            data['price'] != null
+                ? double.parse(data['price'].toString())
+                : 0.0;
+        final quantity = data['quantity'] ?? 1;
+        totalAmount += price * quantity;
+
+        items.add({
+          'productId': data['productId'] ?? doc.id,
+          'category': data['category'] ?? '',
+          'description': data['description'] ?? '',
+          'imageURL': data['imageUrl'] ?? null,
+          'name': data['name'] ?? '',
+          'price': price,
+          'quantity': quantity,
+          'stock': data['stock'] ?? 0,
+        });
+      }
+
+      subtotal = totalAmount;
+      deliveryCharge = subtotal >= 500 ? 0 : 40;
+      couponDiscount = 0;
+      String? usedCouponId;
+
+      if (_selectedCoupon != null) {
+        final coupon = _selectedCoupon!;
+        final type = coupon['type'];
+        final discountVal = double.tryParse(coupon['discount'].toString()) ?? 0;
+
+        if (type == 'Percentage') {
+          couponDiscount = subtotal * (discountVal / 100);
+          if (coupon.containsKey('maxDiscount')) {
+            final maxDisc =
+                double.tryParse(coupon['maxDiscount'].toString()) ?? 0;
+            if (couponDiscount > maxDisc) couponDiscount = maxDisc;
+          }
+        } else if (type == 'Fixed') {
+          couponDiscount = discountVal;
+          if (couponDiscount > subtotal) couponDiscount = subtotal;
+        } else if (type == 'Free Delivery') {
+          // Always free shipping
+          deliveryCharge = 0;
+          // If discountVal > 0, also apply that discount
+          if (discountVal > 0) {
+            couponDiscount = discountVal;
+            if (couponDiscount > subtotal) couponDiscount = subtotal;
+          }
+        }
+        usedCouponId = coupon['id'];
+      }
+
+      final computedTotal = subtotal + deliveryCharge - couponDiscount;
+      finalAmount = computedTotal < 0 ? 0 : computedTotal;
+
+      final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+
+      // Save order
+      await FirebaseFirestore.instance.collection('orders').add({
+        'userId': currentUser.uid,
+        'userEmail': userEmail,
+        'userName': userName,
+        'userPhone': userPhone,
+        'userPinCode': pinCode,
+        'orderNumber': orderNumber,
+        'timestamp': FieldValue.serverTimestamp(),
+        'orderDate': DateTime.now(),
+        'status': 'Processing',
+        'isActive': true,
+        'items': items,
+        'subtotal': subtotal,
+        'deliveryCharge': deliveryCharge,
+        'couponDiscount': couponDiscount,
+        'total': finalAmount,
+        'paymentMethod': 'Stripe',
+        'paymentStatus': 'Paid',
+        'deliveryAddress': userData['address'] ?? '',
+        'notes': '',
+        'couponId': usedCouponId,
+      });
+
+      // If the coupon has usage limit, increment usedCount
+      if (usedCouponId != null) {
+        final usedIndex = _allCoupons.indexWhere(
+          (c) => c['id'] == usedCouponId,
+        );
+        if (usedIndex != -1) {
+          final couponDocId = _allCoupons[usedIndex]['id'];
+          final couponUsedCount = _allCoupons[usedIndex]['usedCount'] ?? 0;
+          await FirebaseFirestore.instance
+              .collection('coupons')
+              .doc(couponDocId)
+              .update({'usedCount': couponUsedCount + 1});
+        }
+      }
+
+      _clearCart();
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Order Placed Successfully'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 60),
+                    SizedBox(height: 16),
+                    Text(
+                      'Your order #$orderNumber has been placed successfully!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Total Amount: ₹${finalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Constants.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'You can track your order in the Orders section.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'OK',
+                      style: TextStyle(color: Constants.accentColor),
+                    ),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Insufficient wallet balance. Please add money or choose a different payment method.',
-            ),
+            content: Text('Failed to process order: $error'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
         );
       }
-    } else {
-      // Process Stripe payment
-      try {
-        await paymentService.makePayment(
-          amount: paymentAmount,
-          context: context,
-          onSuccess: () async {
-            final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-            await paymentService.processOrder(
-              context: context,
-              onOrderComplete: (orderNumber, totalAmount) {
-                StripePaymentService.showOrderSuccessDialog(
-                  context: context,
-                  orderNumber: orderNumber,
-                  totalAmount: totalAmount,
-                );
-              },
-              onError: (error) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to process order: $error'),
-                    backgroundColor: Colors.red,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              },
-              paymentMethod: 'Stripe',
-            );
-          },
-          onError: (error) {
-            setState(() {
-              isLoading = false;
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Payment failed: $error'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          },
-        );
-      } catch (e) {
-        setState(() {
-          isLoading = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
-  /// Builds the coupon selection UI
-  Widget _buildCouponSelection(List<QueryDocumentSnapshot> cartDocs) {
-    _applicableCoupons = _getApplicableCoupons(
-      cartDocs: cartDocs,
-      cartSubtotal: subtotal,
-      cartDelivery: deliveryCharge,
-    );
-
-    // Always show the coupon section regardless of available coupons
-    // Remove the check that was hiding the coupon UI when no coupons available
-    return Container(
-      padding: EdgeInsets.all(16),
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Apply Coupon',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              if (_selectedCoupon != null)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedCoupon = null;
-                    });
-                  },
-                  child: Text('Remove', style: TextStyle(color: Colors.red)),
-                ),
-            ],
-          ),
-          SizedBox(height: 8),
-          // Show dropdown only if there are applicable coupons
-          _applicableCoupons.isEmpty
-              ? Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'No coupons available currently',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              )
-              : DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  hintText: 'Select a coupon',
-                ),
-                value: _selectedCoupon?['id'],
-                items: [
-                  ..._applicableCoupons.map((coupon) {
-                    final String code = coupon['code'] ?? 'UNKNOWN';
-                    final String type = coupon['type'] ?? 'Unknown';
-                    final dynamic discount = coupon['discount'];
-
-                    String displayText = '$code - ';
-                    if (type == 'Percentage') {
-                      displayText += '$discount% off';
-                    } else if (type == 'Fixed') {
-                      displayText += '₹$discount off';
-                    } else if (type == 'Free Delivery') {
-                      displayText += 'Free Delivery';
-                    }
-
-                    return DropdownMenuItem<String>(
-                      value: coupon['id'],
-                      child: Text(displayText),
-                    );
-                  }).toList(),
-                ],
-                onChanged: (String? couponId) {
-                  if (couponId != null) {
-                    final selectedCoupon = _applicableCoupons.firstWhere(
-                      (c) => c['id'] == couponId,
-                      orElse: () => {},
-                    );
-                    setState(() {
-                      _selectedCoupon = selectedCoupon;
-                    });
-                  }
-                },
-              ),
-          if (_selectedCoupon != null) ...[
-            SizedBox(height: 12),
-            _buildCouponDetails(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCouponDetails() {
-    if (_selectedCoupon == null) return SizedBox.shrink();
-
-    final coupon = _selectedCoupon!;
-    final type = coupon['type'];
-    final discountVal = double.tryParse(coupon['discount'].toString()) ?? 0;
-
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Constants.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Constants.primaryColor.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            coupon['code'] ?? 'Coupon',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Constants.primaryColor,
-            ),
-          ),
-          SizedBox(height: 4),
-          if (type == 'Free Delivery')
-            Text(
-              discountVal > 0
-                  ? 'Free Delivery + ₹$discountVal off'
-                  : 'Free Delivery',
-            ),
-          if (type == 'Fixed') Text('₹$discountVal off your order'),
-          if (type == 'Percentage') Text('$discountVal% off your order'),
-
-          SizedBox(height: 4),
-          Text(
-            'You save: ₹${couponDiscount.toStringAsFixed(2)}',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _updateQuantity(String productId, int newQuantity) {
-    if (newQuantity <= 0) {
-      _removeFromCart(productId);
-      return;
-    }
-
+  void _clearCart() {
     FirebaseFirestore.instance
         .collection('cart')
-        .doc(productId)
+        .get()
+        .then((snapshot) {
+          for (DocumentSnapshot doc in snapshot.docs) {
+            doc.reference.delete();
+          }
+        })
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to clear cart: $error')),
+          );
+        });
+  }
+
+  void _updateQuantity(String cartDocId, int newQuantity) {
+    if (newQuantity <= 0) {
+      _removeFromCart(cartDocId);
+      return;
+    }
+    FirebaseFirestore.instance
+        .collection('cart')
+        .doc(cartDocId)
         .update({'quantity': newQuantity})
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -517,10 +506,10 @@ class _CartState extends State<Cart> {
         });
   }
 
-  void _removeFromCart(String productId) {
+  void _removeFromCart(String cartDocId) {
     FirebaseFirestore.instance
         .collection('cart')
-        .doc(productId)
+        .doc(cartDocId)
         .delete()
         .catchError((error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -601,20 +590,138 @@ class _CartState extends State<Cart> {
     );
   }
 
-  void _clearCart() {
-    FirebaseFirestore.instance
-        .collection('cart')
-        .get()
-        .then((snapshot) {
-          for (DocumentSnapshot doc in snapshot.docs) {
-            doc.reference.delete();
-          }
-        })
-        .catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to clear cart: $error')),
-          );
-        });
+  /// Builds the coupon selection UI
+  Widget _buildCouponSelection(List<QueryDocumentSnapshot> cartDocs) {
+    _applicableCoupons = _getApplicableCoupons(
+      cartDocs: cartDocs,
+      cartSubtotal: subtotal,
+      cartDelivery: deliveryCharge,
+    );
+    if (_selectedCoupon != null &&
+        !_applicableCoupons.any((c) => c['id'] == _selectedCoupon!['id'])) {
+      _selectedCoupon = null;
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Apply Coupon',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          SizedBox(height: 8),
+          DropdownButton<Map<String, dynamic>>(
+            isExpanded: true,
+            hint: Text('Select a coupon or choose "No Coupon"'),
+            value: _selectedCoupon,
+            items: [
+              DropdownMenuItem(child: Text('No Coupon'), value: null),
+              ..._applicableCoupons.map((coupon) {
+                final type = coupon['type'];
+                final discountVal = coupon['discount'] ?? 0;
+                String displayText = coupon['code'];
+                if (type == 'Free Delivery') {
+                  displayText += ' - Free Delivery';
+                } else if (type == 'Percentage') {
+                  displayText += ' - $discountVal% off';
+                } else if (type == 'Fixed') {
+                  displayText += ' - ₹$discountVal off';
+                }
+                if (coupon.containsKey('minPurchase')) {
+                  displayText += ' (Min ₹${coupon['minPurchase']})';
+                }
+                return DropdownMenuItem(
+                  value: coupon,
+                  child: Text(displayText),
+                );
+              }).toList(),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedCoupon = value;
+              });
+            },
+          ),
+          if (_selectedCoupon != null) ...[
+            SizedBox(height: 12),
+            Text(
+              'Coupon Details',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            _buildCouponDetails(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponDetails() {
+    final coupon = _selectedCoupon!;
+    final type = coupon['type'];
+    final discountVal = double.tryParse(coupon['discount'].toString()) ?? 0;
+
+    // Show type & discount info
+    if (type == 'Free Delivery') {
+      // If discountVal > 0, "Free Delivery + ₹X off"
+      if (discountVal > 0) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Discount: Free Delivery + ₹$discountVal off'),
+            if (coupon.containsKey('minPurchase'))
+              Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+            if (coupon.containsKey('maxDiscount') && type == 'Percentage')
+              Text('Max Discount: ₹${coupon['maxDiscount']}'),
+          ],
+        );
+      } else {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Discount: Free Delivery'),
+            if (coupon.containsKey('minPurchase'))
+              Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+          ],
+        );
+      }
+    } else if (type == 'Fixed') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Discount: ₹$discountVal off'),
+          if (coupon.containsKey('minPurchase'))
+            Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+        ],
+      );
+    } else if (type == 'Percentage') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Discount: $discountVal% off'),
+          Text('You Saved: ₹${couponDiscount.toStringAsFixed(2)}'),
+          if (coupon.containsKey('minPurchase'))
+            Text('Minimum Purchase: ₹${coupon['minPurchase']}'),
+          if (coupon.containsKey('maxDiscount'))
+            Text('Max Discount: ₹${coupon['maxDiscount']}'),
+        ],
+      );
+    }
+    return SizedBox.shrink();
   }
 
   @override
@@ -633,9 +740,7 @@ class _CartState extends State<Cart> {
               }
               return IconButton(
                 icon: Icon(Icons.delete_outline, color: Constants.primaryColor),
-                onPressed: () {
-                  _showClearCartDialog();
-                },
+                onPressed: _showClearCartDialog,
               );
             },
           ),
@@ -652,7 +757,7 @@ class _CartState extends State<Cart> {
           }
           final cartItems = snapshot.data!.docs;
           if (cartItems.isEmpty) {
-            _buildEmptyCart();
+            return _buildEmptyCart();
           }
 
           // 1. Calculate subtotal
@@ -708,9 +813,6 @@ class _CartState extends State<Cart> {
           final computedTotal = subtotal + deliveryCharge - couponDiscount;
           finalAmount = computedTotal < 0 ? 0 : computedTotal;
 
-          // Update sum for payment processing
-          sum = finalAmount;
-
           return Column(
             children: [
               // Cart items
@@ -721,7 +823,7 @@ class _CartState extends State<Cart> {
                   itemBuilder: (context, index) {
                     final item = cartItems[index];
                     final data = item.data() as Map<String, dynamic>;
-                    final productId = item.id;
+                    final cartDocId = item.id;
                     final name = data['name'] ?? 'Unnamed Product';
                     final price =
                         data['price'] != null
@@ -740,7 +842,6 @@ class _CartState extends State<Cart> {
                         padding: const EdgeInsets.all(12.0),
                         child: Row(
                           children: [
-                            // Product Image
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
@@ -763,7 +864,6 @@ class _CartState extends State<Cart> {
                               ),
                             ),
                             SizedBox(width: 16),
-                            // Product Details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,16 +884,14 @@ class _CartState extends State<Cart> {
                                     ),
                                   ),
                                   SizedBox(height: 8),
-                                  // Quantity controls
                                   Row(
                                     children: [
                                       InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            productId,
-                                            quantity - 1,
-                                          );
-                                        },
+                                        onTap:
+                                            () => _updateQuantity(
+                                              cartDocId,
+                                              quantity - 1,
+                                            ),
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
@@ -829,12 +927,11 @@ class _CartState extends State<Cart> {
                                         ),
                                       ),
                                       InkWell(
-                                        onTap: () {
-                                          _updateQuantity(
-                                            productId,
-                                            quantity + 1,
-                                          );
-                                        },
+                                        onTap:
+                                            () => _updateQuantity(
+                                              cartDocId,
+                                              quantity + 1,
+                                            ),
                                         child: Container(
                                           padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
@@ -851,15 +948,12 @@ class _CartState extends State<Cart> {
                                 ],
                               ),
                             ),
-                            // Delete button
                             IconButton(
                               icon: Icon(
                                 Icons.delete_outline,
                                 color: Colors.red[400],
                               ),
-                              onPressed: () {
-                                _removeFromCart(productId);
-                              },
+                              onPressed: () => _removeFromCart(cartDocId),
                             ),
                           ],
                         ),
@@ -869,10 +963,10 @@ class _CartState extends State<Cart> {
                 ),
               ),
 
-              // Coupon selection section
+              // Coupon selection
               _buildCouponSelection(cartItems),
 
-              // Order summary and checkout
+              // Summary & checkout
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -889,7 +983,6 @@ class _CartState extends State<Cart> {
                 ),
                 child: Column(
                   children: [
-                    // Order summary
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -922,7 +1015,6 @@ class _CartState extends State<Cart> {
                         ),
                       ],
                     ),
-                    // Add coupon discount row if applicable
                     if (couponDiscount > 0)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -962,166 +1054,10 @@ class _CartState extends State<Cart> {
                       ],
                     ),
                     SizedBox(height: 16),
-                    // Payment method selection
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Payment Method',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPaymentMethod = 'Stripe';
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedPaymentMethod == 'Stripe'
-                                              ? Constants.primaryColor
-                                                  .withOpacity(0.1)
-                                              : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color:
-                                            selectedPaymentMethod == 'Stripe'
-                                                ? Constants.primaryColor
-                                                : Colors.grey[300]!,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.credit_card,
-                                          color:
-                                              selectedPaymentMethod == 'Stripe'
-                                                  ? Constants.primaryColor
-                                                  : Colors.grey[600],
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Card',
-                                          style: TextStyle(
-                                            color:
-                                                selectedPaymentMethod ==
-                                                        'Stripe'
-                                                    ? Constants.primaryColor
-                                                    : Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPaymentMethod = 'Wallet';
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedPaymentMethod == 'Wallet'
-                                              ? Constants.primaryColor
-                                                  .withOpacity(0.1)
-                                              : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color:
-                                            selectedPaymentMethod == 'Wallet'
-                                                ? Constants.primaryColor
-                                                : Colors.grey[300]!,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.account_balance_wallet,
-                                          color:
-                                              selectedPaymentMethod == 'Wallet'
-                                                  ? Constants.primaryColor
-                                                  : Colors.grey[600],
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Wallet',
-                                          style: TextStyle(
-                                            color:
-                                                selectedPaymentMethod ==
-                                                        'Wallet'
-                                                    ? Constants.primaryColor
-                                                    : Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // Show wallet balance if wallet is selected
-                          if (selectedPaymentMethod == 'Wallet')
-                            FutureBuilder<double>(
-                              future: WalletService().getWalletBalance(),
-                              builder: (context, snapshot) {
-                                final balance = snapshot.data ?? 0.0;
-                                final isBalanceSufficient =
-                                    balance >= finalAmount;
-
-                                return Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Wallet Balance:',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      Text(
-                                        '₹ ${balance.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              isBalanceSufficient
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                    // Checkout button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: isLoading ? null : () => processPayment(),
+                        onPressed: isLoading ? null : () => makeStripePayment(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Constants.accentColor,
                           foregroundColor: Colors.white,

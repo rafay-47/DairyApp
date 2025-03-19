@@ -16,8 +16,7 @@ class _ProductsPageState extends State<ProductsPage> {
   final TextEditingController _stockController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
-  final TextEditingController _productPinController =
-      TextEditingController(); // For adding/updating a product
+  final TextEditingController _productPinController = TextEditingController();
 
   // Controller and variable for user PIN filter
   final TextEditingController _userPinController = TextEditingController();
@@ -64,6 +63,7 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
+  /// Creates a new product document, then updates it with docId
   Future<void> _addProduct() async {
     if (_nameController.text.isNotEmpty &&
         _priceController.text.isNotEmpty &&
@@ -73,7 +73,8 @@ class _ProductsPageState extends State<ProductsPage> {
       if (_selectedImage != null) {
         imageURL = await _uploadImage(_selectedImage!);
       }
-      _firestore.collection('products').add({
+      // 1. Add the document
+      final docRef = await _firestore.collection('products').add({
         'name': _nameController.text,
         'price': double.parse(_priceController.text),
         'stock': int.parse(_stockController.text),
@@ -82,10 +83,14 @@ class _ProductsPageState extends State<ProductsPage> {
         'pinCode': _productPinController.text,
         'imageURL': imageURL,
       });
+      // 2. Update the doc to store its own docId
+      await docRef.update({'docId': docRef.id});
+
       _clearFields();
     }
   }
 
+  /// Updates an existing product. We do NOT overwrite docId here.
   Future<void> _updateProduct() async {
     if (_nameController.text.isNotEmpty &&
         _priceController.text.isNotEmpty &&
@@ -96,15 +101,26 @@ class _ProductsPageState extends State<ProductsPage> {
       if (_selectedImage != null) {
         imageURL = await _uploadImage(_selectedImage!);
       }
-      _firestore.collection('products').doc(_selectedProductId).update({
+      final productDoc = _firestore
+          .collection('products')
+          .doc(_selectedProductId);
+
+      // Build an update map
+      final updateData = {
         'name': _nameController.text,
         'price': double.parse(_priceController.text),
         'stock': int.parse(_stockController.text),
         'description': _descriptionController.text,
         'category': _categoryController.text,
         'pinCode': _productPinController.text,
-        'imageURL': imageURL,
-      });
+      };
+      // Only update imageURL if new image is uploaded
+      if (imageURL != null) {
+        updateData['imageURL'] = imageURL;
+      }
+
+      await productDoc.update(updateData);
+
       _clearFields();
       setState(() {
         _selectedProductId = null;
@@ -137,15 +153,22 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Build a query that filters products based on the user's PIN code
+    // If you want to show ALL products when userPinFilter is empty,
+    // you can remove this logic. But currently, it shows no products
+    // unless the user enters a PIN code.
     Query productsQuery;
     if (_userPinFilter.isNotEmpty) {
       productsQuery = _firestore
           .collection('products')
           .where('pinCode', isEqualTo: _userPinFilter);
     } else {
-      // If no PIN is entered, we choose to show no products until the user enters one.
-      productsQuery = _firestore.collection('products');
+      // Show no products if no PIN code is entered
+      productsQuery = _firestore
+          .collection('products')
+          .where(
+            'pinCode',
+            isEqualTo: '_no_such_pin_',
+          ); // or do .limit(0) if you want an empty list
     }
 
     return Scaffold(
@@ -320,6 +343,9 @@ class _ProductsPageState extends State<ProductsPage> {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           final product = products[index];
+                          final productData =
+                              product.data() as Map<String, dynamic>;
+
                           return Card(
                             margin: EdgeInsets.symmetric(vertical: 8),
                             shape: RoundedRectangleBorder(
@@ -328,31 +354,38 @@ class _ProductsPageState extends State<ProductsPage> {
                             elevation: 2,
                             child: ListTile(
                               leading:
-                                  product['imageURL'] != null
+                                  productData['imageURL'] != null
                                       ? CircleAvatar(
                                         backgroundImage: NetworkImage(
-                                          product['imageURL'],
+                                          productData['imageURL'],
                                         ),
                                       )
                                       : CircleAvatar(child: Icon(Icons.image)),
-                              title: Text(product['name']),
+                              title: Text(productData['name']),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (product['category'] != null &&
-                                      product['category'].toString().isNotEmpty)
-                                    Text("Category: ${product['category']}"),
-                                  if (product['description'] != null &&
-                                      product['description']
+                                  if (productData['category'] != null &&
+                                      productData['category']
                                           .toString()
                                           .isNotEmpty)
                                     Text(
-                                      "Description: ${product['description']}",
+                                      "Category: ${productData['category']}",
+                                    ),
+                                  if (productData['description'] != null &&
+                                      productData['description']
+                                          .toString()
+                                          .isNotEmpty)
+                                    Text(
+                                      "Description: ${productData['description']}",
                                     ),
                                   Text(
-                                    'Price: ₹${product['price']} | Stock: ${product['stock']}',
+                                    'Price: ₹${productData['price']} | Stock: ${productData['stock']}',
                                   ),
-                                  Text("PIN Code: ${product['pinCode']}"),
+                                  Text("PIN Code: ${productData['pinCode']}"),
+                                  // Optionally show the docId
+                                  if (productData.containsKey('docId'))
+                                    Text("Doc ID: ${productData['docId']}"),
                                 ],
                               ),
                               isThreeLine: true,
@@ -364,17 +397,18 @@ class _ProductsPageState extends State<ProductsPage> {
                                     onPressed: () {
                                       setState(() {
                                         _selectedProductId = product.id;
-                                        _nameController.text = product['name'];
+                                        _nameController.text =
+                                            productData['name'] ?? '';
                                         _priceController.text =
-                                            product['price'].toString();
+                                            productData['price'].toString();
                                         _stockController.text =
-                                            product['stock'].toString();
+                                            productData['stock'].toString();
                                         _descriptionController.text =
-                                            product['description'] ?? '';
+                                            productData['description'] ?? '';
                                         _categoryController.text =
-                                            product['category'] ?? '';
+                                            productData['category'] ?? '';
                                         _productPinController.text =
-                                            product['pinCode'] ?? '';
+                                            productData['pinCode'] ?? '';
                                       });
                                     },
                                   ),
