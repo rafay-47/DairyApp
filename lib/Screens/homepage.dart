@@ -393,8 +393,17 @@ class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
         .where('category', isEqualTo: widget.category);
 
     // Add location filtering if needed
+    //**FOR LEGACY PRODUCTS */
+    // if (widget.pinCode != null) {
+    //   productsQuery = productsQuery.where('pinCode', isEqualTo: widget.pinCode);
+    // }
+
+    //For new Products
     if (widget.pinCode != null) {
-      productsQuery = productsQuery.where('pinCode', isEqualTo: widget.pinCode);
+      productsQuery = productsQuery.where(
+        'pinCodes',
+        arrayContains: widget.pinCode,
+      );
     }
 
     return Scaffold(
