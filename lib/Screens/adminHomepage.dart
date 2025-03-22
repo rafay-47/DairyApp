@@ -11,6 +11,7 @@ import 'package:dairyapp/Screens/AdminOrders.dart';
 import 'package:dairyapp/Screens/AdminOffers.dart';
 import 'AdminSubscriptionsPage.dart';
 import 'PaymentManagementPage.dart';
+import 'dart:math' as Math;
 
 /// A simple Coming Soon page.
 class ComingSoonPage extends StatelessWidget {
@@ -224,15 +225,17 @@ class _AdminHomePageState extends State<AdminHomePage> {
     }
   }
 
-  /// Fetches revenue chart data from the "payments" collection,
+  // Fetches revenue chart data from the "payments" collection,
   /// grouping revenue by day (for week/month) or by month (for year)
   /// based on the selected period.
+  // Fixed function to fetch revenue data with proper data validation and aggregation
   Future<void> _fetchRevenueChartDataFromPayments() async {
     try {
       DateTime now = DateTime.now();
       DateTime start, end;
       Map<int, double> revenueMap = {};
 
+      // Initialize all periods with zero values to ensure complete data representation
       if (_selectedRevenuePeriod == 'week') {
         int currentWeekday = now.weekday; // Monday = 1
         start = DateTime(
@@ -246,11 +249,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
         start = DateTime(now.year, now.month, 1);
         end = DateTime(now.year, now.month + 1, 1);
         int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-        for (int i = 1; i <= daysInMonth; i++) revenueMap[i] = 0;
+        for (int i = 0; i < daysInMonth; i++) revenueMap[i] = 0;
       } else if (_selectedRevenuePeriod == 'year') {
         start = DateTime(now.year, 1, 1);
         end = DateTime(now.year + 1, 1, 1);
-        for (int i = 1; i <= 12; i++) revenueMap[i] = 0;
+        for (int i = 0; i < 12; i++) revenueMap[i] = 0;
       } else {
         start = DateTime(now.year, now.month, 1);
         end = DateTime(now.year, now.month + 1, 1);
@@ -267,16 +270,29 @@ class _AdminHomePageState extends State<AdminHomePage> {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>? ?? {};
         Timestamp ts = data['timestamp'] as Timestamp? ?? Timestamp.now();
         DateTime dt = ts.toDate();
-        double amount = (data['amount'] ?? 0).toDouble();
+
+        // Safely convert amount to double with proper null checking
+        double amount = 0;
+        if (data['amount'] != null) {
+          try {
+            amount = double.parse(data['amount'].toString());
+          } catch (e) {
+            print("Error parsing amount: $e");
+            amount = 0;
+          }
+        }
+
+        // Ensure amount is never negative
+        if (amount < 0) amount = 0;
 
         if (_selectedRevenuePeriod == 'week') {
           int index = dt.weekday - 1;
           revenueMap[index] = (revenueMap[index] ?? 0) + amount;
         } else if (_selectedRevenuePeriod == 'month') {
-          int day = dt.day;
+          int day = dt.day - 1; // Adjust to 0-based index for consistency
           revenueMap[day] = (revenueMap[day] ?? 0) + amount;
         } else if (_selectedRevenuePeriod == 'year') {
-          int month = dt.month;
+          int month = dt.month - 1; // Adjust to 0-based index for consistency
           revenueMap[month] = (revenueMap[month] ?? 0) + amount;
         }
       }
@@ -287,15 +303,16 @@ class _AdminHomePageState extends State<AdminHomePage> {
           spots.add(FlSpot(i.toDouble(), revenueMap[i] ?? 0));
         }
       } else if (_selectedRevenuePeriod == 'month') {
-        int daysInMonth = revenueMap.keys.length;
-        for (int i = 1; i <= daysInMonth; i++) {
-          spots.add(FlSpot((i - 1).toDouble(), revenueMap[i] ?? 0));
+        int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+        for (int i = 0; i < daysInMonth; i++) {
+          spots.add(FlSpot(i.toDouble(), revenueMap[i] ?? 0));
         }
       } else if (_selectedRevenuePeriod == 'year') {
-        for (int i = 1; i <= 12; i++) {
-          spots.add(FlSpot((i - 1).toDouble(), revenueMap[i] ?? 0));
+        for (int i = 0; i < 12; i++) {
+          spots.add(FlSpot(i.toDouble(), revenueMap[i] ?? 0));
         }
       }
+
       setState(() {
         _revenueData = spots;
       });
@@ -476,7 +493,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildRevenueLeftTitle(double value, TitleMeta meta) {
-    return Text('₹${value.toInt()}', style: const TextStyle(fontSize: 12));
+    const style = TextStyle(fontSize: 10, color: Colors.grey);
+
+    String formattedValue;
+    if (value == 0) {
+      formattedValue = '₹0';
+    } else if (value >= 100000) {
+      formattedValue = '₹${(value / 100000).toStringAsFixed(1)}L';
+    } else if (value >= 1000) {
+      formattedValue = '₹${(value / 1000).toStringAsFixed(0)}K';
+    } else {
+      formattedValue = '₹${value.toInt()}';
+    }
+
+    return SideTitleWidget(
+      meta: meta, // Pass the required meta argument here
+      fitInside: SideTitleFitInsideData.fromTitleMeta(
+        meta,
+      ), // Ensure fitInside is set correctly
+      child: Text(formattedValue, style: style),
+    );
   }
 
   Widget _buildWelcomeCard() {
@@ -489,6 +525,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     } else {
       greeting = 'Good Evening';
     }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -497,6 +534,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
+            // Greeting text on the left
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,28 +555,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ],
               ),
             ),
-            // Wrap the image in Flexible to prevent overflow.
-            Flexible(
-              child: Image.asset(
-                'assets/admin_illustration.png',
-                height: 100,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 100,
-                    width: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.analytics,
-                      size: 60,
-                      color: Colors.white,
-                    ),
-                  );
-                },
+
+            // Small bar chart icon in a circle on the right
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
               ),
+              padding: const EdgeInsets.all(16),
+              child: const Icon(Icons.bar_chart, size: 40, color: Colors.white),
             ),
           ],
         ),
@@ -705,14 +730,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       : LineChart(
                         LineChartData(
                           gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval:
-                                _selectedRevenuePeriod == 'week'
-                                    ? 50
-                                    : _selectedRevenuePeriod == 'month'
-                                    ? 100
-                                    : 200,
+                            show: false, // Remove all grid lines
                           ),
                           titlesData: FlTitlesData(
                             bottomTitles: AxisTitles(
@@ -739,18 +757,23 @@ class _AdminHomePageState extends State<AdminHomePage> {
                           borderData: FlBorderData(show: false),
                           minX: 0,
                           maxX: _revenueData.length.toDouble() - 1,
-                          minY: 0,
+                          minY: 0, // Ensure Y starts at 0
                           maxY:
                               _revenueData.isNotEmpty
-                                  ? _revenueData
-                                          .map((e) => e.y)
-                                          .reduce((a, b) => a > b ? a : b) +
-                                      50
+                                  ? Math.max(
+                                    1,
+                                    _revenueData
+                                            .map((e) => e.y)
+                                            .reduce((a, b) => a > b ? a : b) *
+                                        1.1,
+                                  ) // Add 10% padding and ensure it's at least 1
                                   : 100,
                           lineBarsData: [
                             LineChartBarData(
                               spots: _revenueData,
                               isCurved: true,
+                              preventCurveOverShooting:
+                                  true, // <-- Add this line
                               barWidth: 3,
                               dotData: FlDotData(show: true),
                               belowBarData: BarAreaData(
@@ -867,14 +890,18 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _buildProductStats() {
+    // If no products, show placeholder
     if (_topProducts.isEmpty) {
       return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
           child: Center(child: Text("No product data available")),
         ),
       );
     }
+
+    // Prepare pie chart sections & legend items
     List<PieChartSectionData> sections = [];
     List<Map<String, dynamic>> legendItems = [];
     final List<Color> colors = [
@@ -883,6 +910,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       Colors.pinkAccent,
       Colors.greenAccent,
     ];
+
     int index = 0;
     _topProducts.forEach((productName, percentage) {
       final color = colors[index % colors.length];
@@ -891,7 +919,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
           value: percentage,
           title: '${percentage.toStringAsFixed(1)}%',
           color: color,
-          radius: 50,
+          radius: 60, // Increased for a bigger slice
+          showTitle: true,
+          titleStyle: const TextStyle(
+            fontSize: 14, // Bolder & bigger label
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          // This moves the label slightly outward from center
+          titlePositionPercentageOffset: 0.55,
         ),
       );
       legendItems.add({
@@ -901,6 +937,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       });
       index++;
     });
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -919,23 +956,53 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
             const SizedBox(height: 20),
             SizedBox(
-              height: 200,
+              height: 220, // Slightly taller for a bigger chart
               child: PieChart(
                 PieChartData(
                   sections: sections,
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 30,
+                  sectionsSpace: 1, // Less space between slices
+                  centerSpaceRadius: 40, // More donut space in center
+                  pieTouchData: PieTouchData(
+                    // Enable interactions
+                    enabled: true,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 20),
+            // Build a simple legend
             Column(
               children:
                   legendItems.map((item) {
-                    return _buildProductLegend(
-                      item['product'],
-                      item['color'],
-                      item['percentage'],
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: item['color'],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item['product'],
+                              style: const TextStyle(color: Constants.textDark),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            item['percentage'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Constants.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   }).toList(),
             ),
@@ -945,38 +1012,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Widget _buildProductLegend(String product, Color color, String percentage) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              product,
-              style: const TextStyle(color: Constants.textDark),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            percentage,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Constants.textDark,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSubscriptionSummary() {
-    // Wrap subscription summary cards in a Wrap widget to avoid horizontal overflow.
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -993,38 +1029,38 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
             ),
             const SizedBox(height: 20),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 3,
-                  child: _buildSubscriptionCard(
-                    'Weekly',
-                    _subscriptionSummary['weekly'].toString(),
-                    Icons.calendar_view_week,
-                    Constants.accentColor,
+            IntrinsicHeight(
+              // This forces all children to have the same height
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildSubscriptionCard(
+                      'Weekly',
+                      _subscriptionSummary['weekly'].toString(),
+                      Icons.calendar_view_week,
+                      Constants.accentColor,
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 3,
-                  child: _buildSubscriptionCard(
-                    'Monthly',
-                    _subscriptionSummary['monthly'].toString(),
-                    Icons.calendar_month,
-                    Colors.purpleAccent,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildSubscriptionCard(
+                      'Monthly',
+                      _subscriptionSummary['monthly'].toString(),
+                      Icons.calendar_month,
+                      Colors.purpleAccent,
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 3,
-                  child: _buildSubscriptionCard(
-                    'New Subscribers',
-                    _subscriptionSummary['newSubscribers'].toString(),
-                    Icons.person_add,
-                    Colors.greenAccent,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildSubscriptionCard(
+                      'New\nSubscribers',
+                      _subscriptionSummary['newSubscribers'].toString(),
+                      Icons.person_add,
+                      Colors.green,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -1032,6 +1068,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
+  // Subscription card builder with fixed height
   Widget _buildSubscriptionCard(
     String title,
     String count,
@@ -1039,15 +1076,17 @@ class _AdminHomePageState extends State<AdminHomePage> {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 140, // Fixed height for all cards
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: color, size: 30),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             count,
             style: TextStyle(
@@ -1056,12 +1095,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
               color: color,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             title,
+            textAlign: TextAlign.center,
+            maxLines: 2, // Allow up to 2 lines for text
             style: const TextStyle(
               color: Constants.textDark,
               fontWeight: FontWeight.w500,
+              fontSize: 14, // Slightly smaller font to fit in the space
             ),
           ),
         ],
