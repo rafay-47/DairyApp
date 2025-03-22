@@ -28,45 +28,40 @@ class _SettingsState extends State<Settings> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('images/Settings.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
+      
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Column(
           children: <Widget>[
             SizedBox(height: 10.0),
-            Container(
-              height: 70.0,
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(color: Colors.white),
-              child: Card(
-                elevation: 4,
-                child: Row(
-                  children: <Widget>[
-                    SizedBox(width: 10.0),
-                    Icon(Icons.edit),
-                    TextButton(
-                      child: Text(
-                        'Raise a complain',
-                        style: TextStyle(fontSize: 18.0),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => feedbackPage(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // Container(
+            //   height: 70.0,
+            //   width: MediaQuery.of(context).size.width,
+            //   decoration: BoxDecoration(color: Colors.white),
+            //   child: Card(
+            //     elevation: 4,
+            //     child: Row(
+            //       children: <Widget>[
+            //         SizedBox(width: 10.0),
+            //         Icon(Icons.edit),
+            //         TextButton(
+            //           child: Text(
+            //             'Raise a complain',
+            //             style: TextStyle(fontSize: 18.0),
+            //           ),
+            //           onPressed: () {
+            //             Navigator.push(
+            //               context,
+            //               MaterialPageRoute(
+            //                 builder: (context) => feedbackPage(),
+            //               ),
+            //             );
+            //           },
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
             
             Container(
               height: 70.0,

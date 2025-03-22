@@ -401,10 +401,6 @@ class RegisterState extends State<RegisterPage> {
           {},
         );
 
-        await FirebaseFirestore.instance
-            .collection('cart')
-            .doc(user.user!.uid)
-            .set({'product': map});
 
         widget.onSignedIn();
 

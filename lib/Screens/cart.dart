@@ -39,13 +39,16 @@ class _CartState extends State<Cart> {
   int _userOrderCount = 0; // how many orders user has
   Map<String, int> _couponUsageByUser =
       {}; // tracks how many times user used each coupon
-
+  String _deliveryAddress = '';
   // Delivery address text field
   final TextEditingController _addressController = TextEditingController();
-
+  
   @override
   void initState() {
     super.initState();
+    print(_userData);
+    _deliveryAddress = _userData?['deliveryAddress'] ?? '';
+    _addressController.text = _deliveryAddress;
     // Initialize Stripe in the payment service
     StripePaymentService.init();
     _fetchInitialData();
@@ -78,7 +81,7 @@ class _CartState extends State<Cart> {
               .doc(user.uid)
               .get();
       _userData = userDoc.data() ?? {};
-
+      _addressController.text = _userData?['deliveryAddress'] ?? '';
       // 2. Count how many orders the user has
       _userOrderCount = await _getUserOrderCount(user.uid);
 
@@ -739,7 +742,7 @@ class _CartState extends State<Cart> {
                             ? data['price'].toString()
                             : 'N/A';
                     final quantity = data['quantity'] ?? 1;
-                    final imageUrl = data['imageUrl'] ?? '';
+                    final imageUrl = data['imageUrl'] ?? 'https://www.nestleprofessional.com.pk/sites/default/files/styles/np_product_teaser_2x/public/2022-06/milkpak_uht_pro_choice_1_liter.png?itok=YgvMIB74';
 
                     return Card(
                       margin: EdgeInsets.only(bottom: 16),
@@ -1137,6 +1140,7 @@ class _CartState extends State<Cart> {
                       // Delivery Address field (no form, just a text field)
                       TextField(
                         controller: _addressController,
+                        
                         decoration: InputDecoration(
                           labelText: 'Delivery Address',
                           hintText: 'Enter your delivery address',

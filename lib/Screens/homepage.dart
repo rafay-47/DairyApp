@@ -713,7 +713,9 @@ class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
                               productData['price'] != null
                                   ? productData['price'].toString()
                                   : 'N/A';
-                          final imageUrl = productData['imageUrl'] ?? '';
+                          final imageUrl =
+                              productData['imageUrl'] ??
+                              'https://www.nestleprofessional.com.pk/sites/default/files/styles/np_product_teaser_2x/public/2022-06/milkpak_uht_pro_choice_1_liter.png?itok=YgvMIB74';
                           final description = productData['description'] ?? '';
                           final unit = productData['unit'] ?? '';
 
@@ -736,21 +738,62 @@ class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
                                     flex: 6,
                                     child: Stack(
                                       children: [
-                                        Positioned.fill(
+                                        Container(
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          color: Colors.white,
                                           child:
                                               imageUrl.isNotEmpty
                                                   ? Image.network(
                                                     imageUrl,
-                                                    fit: BoxFit.cover,
+                                                    fit: BoxFit.contain,
+                                                    loadingBuilder: (
+                                                      context,
+                                                      child,
+                                                      loadingProgress,
+                                                    ) {
+                                                      if (loadingProgress ==
+                                                          null)
+                                                        return child;
+                                                      return Center(
+                                                        child: CircularProgressIndicator(
+                                                          value:
+                                                              loadingProgress
+                                                                          .expectedTotalBytes !=
+                                                                      null
+                                                                  ? loadingProgress
+                                                                          .cumulativeBytesLoaded /
+                                                                      loadingProgress
+                                                                          .expectedTotalBytes!
+                                                                  : null,
+                                                          color:
+                                                              Constants
+                                                                  .primaryColor,
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      );
+                                                    },
+                                                    errorBuilder: (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) {
+                                                      return Center(
+                                                        child: Icon(
+                                                          Icons
+                                                              .image_not_supported,
+                                                          color:
+                                                              Colors.grey[400],
+                                                          size: 40,
+                                                        ),
+                                                      );
+                                                    },
                                                   )
-                                                  : Container(
-                                                    color: Colors.grey[200],
-                                                    child: Center(
-                                                      child: Icon(
-                                                        Icons.image,
-                                                        color: Colors.grey[400],
-                                                        size: 40,
-                                                      ),
+                                                  : Center(
+                                                    child: Icon(
+                                                      Icons.image,
+                                                      color: Colors.grey[400],
+                                                      size: 40,
                                                     ),
                                                   ),
                                         ),
@@ -1168,7 +1211,9 @@ class _ProductsByCategoryPageState extends State<ProductsByCategoryPage> {
           'name': productName,
           'price': productData['price'],
           'quantity': 1,
-          'imageUrl': productData['imageUrl'] ?? '',
+          'imageUrl':
+              productData['imageUrl'] ??
+              'https://www.nestleprofessional.com.pk/sites/default/files/styles/np_product_teaser_2x/public/2022-06/milkpak_uht_pro_choice_1_liter.png?itok=YgvMIB74',
           'category': widget.category,
           'addedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true))
@@ -1571,7 +1616,9 @@ class CategoriesList extends StatelessWidget {
                   final categoryName =
                       categoryData['name'] ?? 'Unnamed Category';
                   final categoryDescription = categoryData['description'] ?? '';
-                  final imageUrl = categoryData['imageUrl'] ?? '';
+                  var imageUrl =
+                      categoryData['imageUrl'] ??
+                      'https://www.nestleprofessional.com.pk/sites/default/files/styles/np_product_teaser_2x/public/2022-06/milkpak_uht_pro_choice_1_liter.png?itok=YgvMIB74';
 
                   return Card(
                     elevation: 2,
@@ -1752,7 +1799,9 @@ class CategoriesList extends StatelessWidget {
                       productData['price'] != null
                           ? productData['price'].toString()
                           : 'N/A';
-                  final imageUrl = productData['imageUrl'] ?? '';
+                  var imageUrl =
+                      productData['imageUrl'] ??
+                      'https://www.nestleprofessional.com.pk/sites/default/files/styles/np_product_teaser_2x/public/2022-06/milkpak_uht_pro_choice_1_liter.png?itok=YgvMIB74';
 
                   return Container(
                     width: 160,
@@ -1775,21 +1824,58 @@ class CategoriesList extends StatelessWidget {
                               flex: 3,
                               child: Stack(
                                 children: [
-                                  Positioned.fill(
+                                  Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    color: Colors.white,
                                     child:
                                         imageUrl.isNotEmpty
                                             ? Image.network(
                                               imageUrl,
-                                              fit: BoxFit.cover,
+                                              fit: BoxFit.contain,
+                                              loadingBuilder: (
+                                                context,
+                                                child,
+                                                loadingProgress,
+                                              ) {
+                                                if (loadingProgress == null)
+                                                  return child;
+                                                return Center(
+                                                  child: CircularProgressIndicator(
+                                                    value:
+                                                        loadingProgress
+                                                                    .expectedTotalBytes !=
+                                                                null
+                                                            ? loadingProgress
+                                                                    .cumulativeBytesLoaded /
+                                                                loadingProgress
+                                                                    .expectedTotalBytes!
+                                                            : null,
+                                                    color:
+                                                        Constants.primaryColor,
+                                                    strokeWidth: 2,
+                                                  ),
+                                                );
+                                              },
+                                              errorBuilder: (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) {
+                                                return Center(
+                                                  child: Icon(
+                                                    Icons.image_not_supported,
+                                                    color: Colors.grey[400],
+                                                    size: 40,
+                                                  ),
+                                                );
+                                              },
                                             )
-                                            : Container(
-                                              color: Colors.grey[200],
-                                              child: Center(
-                                                child: Icon(
-                                                  Icons.image,
-                                                  color: Colors.grey[400],
-                                                  size: 40,
-                                                ),
+                                            : Center(
+                                              child: Icon(
+                                                Icons.image,
+                                                color: Colors.grey[400],
+                                                size: 40,
                                               ),
                                             ),
                                   ),
